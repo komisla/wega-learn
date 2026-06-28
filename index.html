@@ -26,6 +26,70 @@
 </head>
 <body>
 
+  <!-- ============================ Intro Overlay (3 Slides, einmalig) ============================ -->
+  <div id="introOverlay" class="intro-overlay" hidden>
+    <div class="intro-card">
+      <div class="intro-slides" id="introSlides">
+
+        <div class="intro-slide active" data-slide="0">
+          <div class="intro-slide-icon">🌳</div>
+          <h2 class="intro-slide-title">XML — Daten als Baum</h2>
+          <pre class="intro-slide-pre">XML strukturiert Daten als verschachtelte Elemente:
+
+  &lt;brief&gt;
+    &lt;absender&gt;Carl Maria von Weber&lt;/absender&gt;
+    &lt;datum&gt;1817-03-15&lt;/datum&gt;
+    &lt;text&gt;Liebe Caroline...&lt;/text&gt;
+  &lt;/brief&gt;
+
+Jedes Element kann Kinder, Text und Attribute haben.
+TEI ist ein XML-Format — du wirst genau solche
+Strukturen abfragen und transformieren.</pre>
+        </div>
+
+        <div class="intro-slide" data-slide="1">
+          <div class="intro-slide-icon">🧭</div>
+          <h2 class="intro-slide-title">XPath — Navigation im Baum</h2>
+          <pre class="intro-slide-pre">XPath ist eine Sprache um Elemente im XML-Baum
+zu finden:
+
+  //absender          → findet &lt;absender&gt;
+  //brief/datum       → findet &lt;datum&gt; in &lt;brief&gt;
+  //brief[@id='001']  → findet &lt;brief&gt; mit Attribut
+
+Du beschreibst einen Pfad — XPath geht ihn ab.</pre>
+        </div>
+
+        <div class="intro-slide" data-slide="2">
+          <div class="intro-slide-icon">🏷️</div>
+          <h2 class="intro-slide-title">Namespaces — damit Namen eindeutig bleiben</h2>
+          <pre class="intro-slide-pre">TEI-Elemente stehen in einem Namespace:
+  xmlns:tei="http://www.tei-c.org/ns/1.0"
+
+Ohne Präfix würde XPath "persName" nicht finden
+— es sucht nach dem falschen Namespace.
+
+  Richtig:   //tei:persName   ✓
+  Falsch:    //persName        ✗ (findet nichts!)</pre>
+          <p class="intro-slide-note">Du wirst das oft brauchen — merke es dir jetzt.</p>
+        </div>
+
+      </div>
+
+      <div class="intro-footer">
+        <div class="intro-dots" id="introDots">
+          <span class="intro-dot active" data-idx="0"></span>
+          <span class="intro-dot" data-idx="1"></span>
+          <span class="intro-dot" data-idx="2"></span>
+        </div>
+        <div class="intro-actions">
+          <button class="skip-link" id="introSkip">Überspringen</button>
+          <button class="primary-btn" id="introNext">Weiter →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ============================ Top Bar ============================ -->
   <header id="topbar">
     <div class="brand" id="brandHome" title="Zur Weltauswahl">
@@ -38,8 +102,8 @@
     <div class="stats">
       <span class="stat xp"><span class="stat-icon">⚡</span> <span id="xpValue">0</span> XP</span>
       <span class="stat streak"><span class="stat-icon">🔥</span> <span id="streakValue">0</span> Streak</span>
-      <!-- Combo display (hidden by default) -->
       <span class="stat combo" id="comboDisplay" hidden><span id="comboText">2× 🔥</span></span>
+      <button id="glossaryBtn" class="ghost-btn" title="Glossar DE/EN">🔤</button>
       <button id="achievementBtn" class="ghost-btn" title="Achievements">🏆</button>
       <button id="resetBtn" class="ghost-btn" title="Fortschritt zurücksetzen">↺ Reset</button>
     </div>
@@ -52,6 +116,18 @@
       <button id="reviewBtn" class="primary-btn review-start-btn">Review starten</button>
     </div>
     <div class="world-grid" id="worldGrid"><!-- gefüllt durch app.js --></div>
+
+    <div class="quiz-banner">
+      <div class="quiz-banner-left">
+        <span class="quiz-banner-icon">🧩</span>
+        <div>
+          <div class="quiz-banner-title">Quiz — Terminologie &amp; Konzepte</div>
+          <div class="quiz-banner-sub">30 Fragen · Single &amp; Multi Select · Mobile-freundlich</div>
+        </div>
+      </div>
+      <button id="quizStartBtn" class="primary-btn">Quiz starten</button>
+    </div>
+
     <p class="hint-foot">Tipp: <kbd>Ctrl</kbd>+<kbd>↵</kbd> führt eine Challenge aus · <kbd>H</kbd> nächster Hint · <kbd>→</kbd> weiter nach Korrekt.</p>
   </main>
 
@@ -63,23 +139,30 @@
       <span id="cProgress" class="c-progress">0 / 12</span>
     </div>
 
+    <!-- Mobile Tab Bar -->
+    <div class="mobile-tabs" id="mobileTabs">
+      <button class="mobile-tab" data-tab="xml">XML</button>
+      <button class="mobile-tab active" data-tab="code">Code</button>
+      <button class="mobile-tab" data-tab="output">Output</button>
+    </div>
+
     <section class="task-card">
       <h2 id="cTitle"><span class="pin">📌</span> <span id="cTitleText">Titel</span></h2>
       <p id="cTask">Aufgabe…</p>
       <span id="cConcept" class="concept-tag"></span>
     </section>
 
-    <section class="work-area">
-      <div class="panel xml-panel">
+    <section class="work-area" id="workArea">
+      <div class="panel xml-panel" id="mobileXmlPanel">
         <div class="panel-head">XML-Fixture <span id="cFixtureName" class="fixture-name"></span></div>
         <pre class="xml-pre"><code id="xmlView" class="language-xml"></code></pre>
       </div>
 
-      <div class="panel editor-panel">
+      <div class="panel editor-panel" id="mobileCodePanel">
         <div class="panel-head" id="editorLabel">Dein XPath-Ausdruck</div>
         <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
 
-        <div class="io-row">
+        <div class="io-row" id="ioRow">
           <div class="io-block">
             <div class="io-label">Output</div>
             <pre id="outputView" class="io-box">—</pre>
@@ -103,6 +186,32 @@
     </div>
 
     <div id="hintArea" class="hint-area" hidden></div>
+  </main>
+
+  <!-- ===================== Screen 3: Quiz ===================== -->
+  <main id="quizScreen" class="screen">
+    <div class="challenge-bar">
+      <button id="quizBackBtn" class="ghost-btn">← Zurück</button>
+      <span class="c-worldname">🧩 Quiz</span>
+      <span id="quizProgress" class="c-progress">Frage 1/30</span>
+    </div>
+
+    <section class="task-card quiz-question-card">
+      <span id="quizConcept" class="concept-tag" style="margin-bottom:10px;display:inline-block"></span>
+      <p id="quizQuestion" class="quiz-question-text">Frage…</p>
+      <p id="quizMultiHint" class="quiz-multi-hint" hidden>Mehrfachauswahl — alle richtigen ankreuzen</p>
+    </section>
+
+    <div id="quizOptions" class="quiz-options"></div>
+
+    <div class="action-bar">
+      <div class="spacer"></div>
+      <span id="quizFeedback" class="feedback-msg"></span>
+      <button id="quizSubmitBtn" class="primary-btn" hidden>Antworten →</button>
+      <button id="quizNextBtn" class="ghost-btn next-btn" hidden>Weiter →</button>
+    </div>
+
+    <div id="quizExplanation" class="hint-area" hidden></div>
   </main>
 
   <!-- Welt abgeschlossen -->
@@ -132,14 +241,24 @@
         <h2>🏆 Achievements</h2>
         <button id="achievementModalClose" class="ghost-btn">✕</button>
       </div>
-      <div id="achievementGrid" class="achievement-grid"><!-- filled by app.js --></div>
+      <div id="achievementGrid" class="achievement-grid"></div>
     </div>
   </div>
 
-  <!-- Konzept-Karten-Overlay (gated vor jeder neuen Challenge-Gruppe) -->
-  <div id="conceptOverlay" class="concept-overlay" hidden>
-    <!-- Inhalt wird von app.js befüllt -->
+  <!-- Glossar Modal -->
+  <div id="glossaryModal" class="overlay" hidden>
+    <div class="overlay-card glossary-modal-card">
+      <div class="glossary-modal-header">
+        <h2>🔤 Glossar DE / EN</h2>
+        <button id="glossaryModalClose" class="ghost-btn">✕</button>
+      </div>
+      <input type="search" id="glossarySearch" class="glossary-search" placeholder="Begriff suchen…" autocomplete="off">
+      <div id="glossaryList" class="glossary-list"></div>
+    </div>
   </div>
+
+  <!-- Konzept-Karten-Overlay -->
+  <div id="conceptOverlay" class="concept-overlay" hidden></div>
 
   <!-- XP-Float-Container -->
   <div id="xpFloatLayer"></div>

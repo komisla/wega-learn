@@ -1,0 +1,7 @@
+.git
+.claude
+infra-ref
+node_modules
+*.md
+deploy.sh
+build-challenges.mjs

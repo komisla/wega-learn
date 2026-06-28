@@ -476,6 +476,8 @@ function buildConceptSandbox(sbConfig) {
 function showScreen(which) {
   els.worldSelect.classList.toggle('active', which === 'world');
   els.challengeScreen.classList.toggle('active', which === 'challenge');
+  const qs = $('quizScreen');
+  if (qs) qs.classList.toggle('active', which === 'quiz');
 }
 
 function openChallenge(world, index) {
@@ -781,6 +783,7 @@ function runChallenge() {
 
   els.outputView.textContent = result.display;
   els.outputView.className = 'io-box';
+  mobileAutoSwitchOutput();
 
   if (result.correct) onCorrect(ch);
   else onWrong();
@@ -1459,6 +1462,24 @@ function wireEvents() {
     if (e.target === els.achievementModal) els.achievementModal.hidden = true;
   });
 
+  // Glossary
+  $('glossaryBtn').addEventListener('click', renderGlossaryModal);
+  $('glossaryModalClose').addEventListener('click', () => { $('glossaryModal').hidden = true; });
+  $('glossaryModal').addEventListener('click', e => {
+    if (e.target === $('glossaryModal')) $('glossaryModal').hidden = true;
+  });
+
+  // Quiz
+  $('quizStartBtn').addEventListener('click', startQuiz);
+  $('quizBackBtn').addEventListener('click', () => { showScreen('world'); renderWorldSelect(); });
+  $('quizSubmitBtn').addEventListener('click', submitQuizAnswer);
+  $('quizNextBtn').addEventListener('click', quizNext);
+
+  // Mobile tabs
+  document.querySelectorAll('.mobile-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchMobileTab(btn.dataset.tab));
+  });
+
   els.editor.addEventListener('keydown', e => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -1480,6 +1501,340 @@ function wireEvents() {
   });
 }
 
+// ============================================================
+//  Feature 4: Mobile Tab Switching
+// ============================================================
+let currentMobileTab = 'code';
+
+function switchMobileTab(tab) {
+  currentMobileTab = tab;
+  document.querySelectorAll('.mobile-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+
+  const xmlPanel  = $('mobileXmlPanel');
+  const codePanel = $('mobileCodePanel');
+  const ioRow     = $('ioRow');
+
+  // On desktop (> 768px) always show all panels
+  if (window.innerWidth > 768) {
+    xmlPanel  && xmlPanel.removeAttribute('data-mobile-hidden');
+    codePanel && codePanel.removeAttribute('data-mobile-hidden');
+    ioRow     && ioRow.removeAttribute('data-mobile-hidden');
+    return;
+  }
+
+  // Mobile: show only the active tab
+  const showXml  = tab === 'xml';
+  const showCode = tab === 'code';
+  const showOut  = tab === 'output';
+
+  if (xmlPanel)  xmlPanel.toggleAttribute('data-mobile-hidden', !showXml);
+  if (codePanel) codePanel.toggleAttribute('data-mobile-hidden', !showCode && !showOut);
+
+  // ioRow is nested inside codePanel — show when 'output' tab active, hide on 'code'
+  if (ioRow) {
+    if (showOut) { codePanel && codePanel.removeAttribute('data-mobile-hidden'); ioRow.removeAttribute('data-mobile-hidden'); }
+    else if (showCode) { ioRow.toggleAttribute('data-mobile-hidden', true); }
+  }
+}
+
+// Auto-switch to output tab after running (mobile only)
+function mobileAutoSwitchOutput() {
+  if (window.innerWidth <= 768) switchMobileTab('output');
+}
+
+// ============================================================
+//  Feature 2: Intro Overlay
+// ============================================================
+const INTRO_SEEN_KEY = 'wega-learn-intro-seen';
+let introSlide = 0;
+const INTRO_TOTAL = 3;
+
+function maybeShowIntro() {
+  if (localStorage.getItem(INTRO_SEEN_KEY)) return;
+  const overlay = $('introOverlay');
+  overlay.hidden = false;
+  introSlide = 0;
+  setIntroSlide(0);
+}
+
+function setIntroSlide(idx) {
+  document.querySelectorAll('.intro-slide').forEach((s, i) => s.classList.toggle('active', i === idx));
+  document.querySelectorAll('.intro-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+  const nextBtn = $('introNext');
+  if (idx >= INTRO_TOTAL - 1) {
+    nextBtn.textContent = 'Los geht\'s →';
+  } else {
+    nextBtn.textContent = 'Weiter →';
+  }
+}
+
+function closeIntro() {
+  localStorage.setItem(INTRO_SEEN_KEY, '1');
+  $('introOverlay').hidden = true;
+}
+
+function wireIntro() {
+  $('introNext').addEventListener('click', () => {
+    if (introSlide >= INTRO_TOTAL - 1) { closeIntro(); return; }
+    introSlide++;
+    setIntroSlide(introSlide);
+  });
+  $('introSkip').addEventListener('click', closeIntro);
+  document.querySelectorAll('.intro-dot').forEach((dot, i) => {
+    dot.addEventListener('click', () => { introSlide = i; setIntroSlide(i); });
+  });
+}
+
+// ============================================================
+//  Feature 3: Glossary
+// ============================================================
+const GLOSSARY = [
+  { de: 'Achse',                  en: 'Axis',                   desc: 'Navigationsrichtung in XPath: child::, parent::, ancestor::, following-sibling::, …' },
+  { de: 'Attributknoten',         en: 'Attribute node',         desc: 'Ein @-Attribut im XML-Baum, z. B. @type oder @key' },
+  { de: 'Ausdruck',               en: 'Expression',             desc: 'Eine XPath/XQuery-Formel, z. B. //tei:persName[@key]' },
+  { de: 'Dokumentreihenfolge',    en: 'Document order',         desc: 'Die Reihenfolge der Knoten wie sie im XML-Quelltext erscheinen' },
+  { de: 'Elementknoten',          en: 'Element node',           desc: 'Ein XML-Tag wie <tei:persName>' },
+  { de: 'Ergebnisbaum',           en: 'Result tree',            desc: 'Der Output einer XSLT-Transformation' },
+  { de: 'Funktion',               en: 'Function',               desc: 'Aufrufbare Einheit in XPath/XQuery/XSLT 2.0: count(), normalize-space(), local:name()' },
+  { de: 'Geschwister',            en: 'Sibling',                desc: 'Elemente auf gleicher Ebene mit demselben Elternelement' },
+  { de: 'Gruppierung',            en: 'Grouping',               desc: 'xsl:for-each-group — Elemente nach einem Kriterium zusammenfassen' },
+  { de: 'Identitätstransformation', en: 'Identity transform',   desc: 'XSLT-Muster das alle Knoten 1:1 kopiert; Basis für selektive Änderungen' },
+  { de: 'Knoten',                 en: 'Node',                   desc: 'Jeder Teil des XML-Baums: Element, Attribut, Text, Kommentar, Wurzel' },
+  { de: 'Knotentyp',              en: 'Node type',              desc: 'element, attribute, text, comment, processing-instruction, document' },
+  { de: 'Kontext',                en: 'Context',                desc: 'Die aktuelle Position bei der Auswertung eines XPath-Ausdrucks' },
+  { de: 'Kontextknoten',          en: 'Context node',           desc: 'Das aktuell verarbeitete Element; ändert sich bei xsl:for-each / for $x in …' },
+  { de: 'Leertext',               en: 'Whitespace',             desc: 'Leerzeichen/Zeilenumbrüche zwischen Tags — oft normalize-space() nötig' },
+  { de: 'Modus',                  en: 'Mode',                   desc: 'Ermöglicht verschiedene Renderings desselben Elements in XSLT (mode="inline" vs. mode="index")' },
+  { de: 'Muster',                 en: 'Pattern',                desc: 'Der match-Wert eines xsl:template, z. B. match="tei:persName"' },
+  { de: 'Nachkomme',              en: 'Descendant',             desc: 'Ein Element unterhalb des aktuellen im Baum (direkt oder indirekt)' },
+  { de: 'Namensraum',             en: 'Namespace',              desc: 'URI die Elementnamen eindeutig macht, z. B. http://www.tei-c.org/ns/1.0' },
+  { de: 'Prädikat',               en: 'Predicate',              desc: 'Filter in eckigen Klammern: [@type=\'reg\'], [1], [last()]' },
+  { de: 'Präfix',                 en: 'Prefix',                 desc: 'Kürzel für Namespace: tei: steht für den TEI-Namensraum' },
+  { de: 'Quellbaum',              en: 'Source tree',            desc: 'Das XML-Eingabedokument, über das XPath/XSLT navigiert' },
+  { de: 'Sequenz',                en: 'Sequence',               desc: 'Geordnete Liste von Knoten und/oder atomaren Werten ab XPath 2.0' },
+  { de: 'Textknoten',             en: 'Text node',              desc: 'Der Textinhalt eines Elements — separater Knotentyp im Baum' },
+  { de: 'Vorlage',                en: 'Template',               desc: 'xsl:template — Regel: wenn Knoten auf match-Pattern passt, diesen Output erzeugen' },
+  { de: 'Vorfahre',               en: 'Ancestor',               desc: 'Ein Element oberhalb des aktuellen im Baum (Elternteil, Großelternteil, …)' },
+  { de: 'Wurzel',                 en: 'Root',                   desc: 'Das oberste Element im XML-Dokument; / in XPath' },
+  { de: 'Zeichenkette',           en: 'String',                 desc: 'Text-Wert, z. B. "Weber" — atomarer Typ in XPath/XQuery' }
+].sort((a, b) => a.de.localeCompare(b.de, 'de'));
+
+// Terms that appear frequently in challenges/concepts (used to highlight)
+const HIGHLIGHT_TERMS = new Set([
+  'Achse','Kontextknoten','Modus','Muster','Namensraum','Prädikat','Präfix','Sequenz','Vorlage','Nachkomme'
+]);
+
+function renderGlossaryModal() {
+  const list = $('glossaryList');
+  list.innerHTML = '';
+  GLOSSARY.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'glossary-entry';
+    const isHighlight = HIGHLIGHT_TERMS.has(entry.de);
+    row.innerHTML =
+      '<span class="glossary-entry-de' + (isHighlight ? ' highlight' : '') + '">' + escapeHtml(entry.de) + '</span>' +
+      '<span class="glossary-entry-en">' + escapeHtml(entry.en) + '</span>' +
+      '<span class="glossary-entry-desc">' + escapeHtml(entry.desc) + '</span>';
+    list.appendChild(row);
+  });
+  $('glossaryModal').hidden = false;
+  $('glossarySearch').value = '';
+  $('glossarySearch').focus();
+}
+
+function wireGlossary() {
+  $('glossarySearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('.glossary-entry').forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.classList.toggle('hidden-entry', q !== '' && !text.includes(q));
+    });
+  });
+}
+
+// ============================================================
+//  Feature 1: Quiz Mode
+// ============================================================
+const QUIZ_XP_SINGLE = 30;
+const QUIZ_XP_MULTI  = 50;
+
+let quizQuestions = [];
+let quizIndex = 0;
+let quizCombo = 0;
+let quizSelected = new Set(); // for multi
+let quizAnswered = false;
+
+function startQuiz() {
+  quizQuestions = shuffleArray((window.QUIZ || []).slice());
+  quizIndex = 0;
+  quizCombo = 0;
+  quizAnswered = false;
+  showScreen('quiz');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  if (quizIndex >= quizQuestions.length) {
+    showQuizDone();
+    return;
+  }
+  const q = quizQuestions[quizIndex];
+  quizSelected = new Set();
+  quizAnswered = false;
+
+  $('quizProgress').textContent = 'Frage ' + (quizIndex + 1) + '/' + quizQuestions.length;
+  $('quizConcept').textContent = q.conceptTag || '';
+  $('quizQuestion').textContent = q.question;
+  $('quizMultiHint').hidden = q.type !== 'multi';
+
+  const optContainer = $('quizOptions');
+  optContainer.innerHTML = '';
+
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-option';
+    btn.dataset.idx = i;
+
+    if (q.type === 'multi') {
+      btn.innerHTML =
+        '<div class="quiz-option-check" data-check></div>' +
+        '<span>' + escapeHtml(opt) + '</span>';
+    } else {
+      btn.innerHTML =
+        '<span class="quiz-option-letter">' + String.fromCharCode(65 + i) + '</span>' +
+        '<span>' + escapeHtml(opt) + '</span>';
+    }
+
+    btn.addEventListener('click', () => {
+      if (quizAnswered) return;
+      if (q.type === 'single') {
+        quizSelected = new Set([i]);
+        optContainer.querySelectorAll('.quiz-option').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        // Auto-submit for single
+        submitQuizAnswer();
+      } else {
+        // Multi: toggle selection
+        if (quizSelected.has(i)) {
+          quizSelected.delete(i);
+          btn.classList.remove('selected');
+          btn.querySelector('[data-check]').textContent = '';
+        } else {
+          quizSelected.add(i);
+          btn.classList.add('selected');
+          btn.querySelector('[data-check]').textContent = '✓';
+        }
+        $('quizSubmitBtn').hidden = quizSelected.size === 0;
+      }
+    });
+
+    optContainer.appendChild(btn);
+  });
+
+  $('quizFeedback').textContent = '';
+  $('quizFeedback').className = 'feedback-msg';
+  $('quizExplanation').hidden = true;
+  $('quizExplanation').innerHTML = '';
+  $('quizSubmitBtn').hidden = q.type === 'single'; // single auto-submits
+  $('quizNextBtn').hidden = true;
+}
+
+function submitQuizAnswer() {
+  if (quizAnswered || quizSelected.size === 0) return;
+  quizAnswered = true;
+
+  const q = quizQuestions[quizIndex];
+  const opts = $('quizOptions').querySelectorAll('.quiz-option');
+
+  let correct = false;
+  if (q.type === 'single') {
+    const chosen = quizSelected.values().next().value;
+    correct = chosen === q.correct;
+    opts.forEach((btn, i) => {
+      btn.classList.add('locked');
+      if (i === q.correct) btn.classList.add('correct');
+      else if (quizSelected.has(i) && !correct) btn.classList.add('wrong');
+    });
+  } else {
+    // Multi: compare sets
+    const correctSet = new Set(q.correct);
+    correct = setsEqual(quizSelected, correctSet);
+    opts.forEach((btn, i) => {
+      btn.classList.add('locked');
+      const chk = btn.querySelector('[data-check]');
+      if (correctSet.has(i)) { btn.classList.add('correct'); if (chk) chk.textContent = '✓'; }
+      else if (quizSelected.has(i)) { btn.classList.add('wrong'); if (chk) chk.textContent = '✗'; }
+    });
+  }
+
+  // XP and combo
+  if (correct) {
+    quizCombo++;
+    const mult = quizCombo >= 4 ? 2.5 : quizCombo >= 3 ? 2.0 : quizCombo >= 2 ? 1.5 : 1.0;
+    const base = q.type === 'multi' ? QUIZ_XP_MULTI : QUIZ_XP_SINGLE;
+    const gained = Math.round(base * mult);
+    state.xp += gained;
+    state.streak += 1;
+    saveState();
+    updateStatsUI();
+    $('quizFeedback').textContent = '✓ Richtig! +' + gained + ' XP' + (mult > 1 ? ' ×' + mult + ' Combo' : '');
+    $('quizFeedback').className = 'feedback-msg ok';
+  } else {
+    quizCombo = 0;
+    $('quizFeedback').textContent = '✗ Nicht ganz.';
+    $('quizFeedback').className = 'feedback-msg bad';
+    if (navigator.vibrate) navigator.vibrate(80);
+  }
+
+  // Show explanation
+  if (q.explanation) {
+    const exp = $('quizExplanation');
+    exp.hidden = false;
+    exp.innerHTML = '<div class="hint-item"><span class="hint-num">Erklärung</span>' + escapeHtml(q.explanation) + '</div>';
+  }
+
+  $('quizSubmitBtn').hidden = true;
+  $('quizNextBtn').hidden = false;
+}
+
+function quizNext() {
+  quizIndex++;
+  renderQuizQuestion();
+}
+
+function showQuizDone() {
+  $('quizOptions').innerHTML = '';
+  $('quizQuestion').textContent = 'Quiz abgeschlossen!';
+  $('quizConcept').textContent = '';
+  $('quizMultiHint').hidden = true;
+  $('quizFeedback').textContent = 'Du hast alle ' + quizQuestions.length + ' Fragen beantwortet. ⚡ ' + state.xp + ' XP';
+  $('quizFeedback').className = 'feedback-msg ok';
+  $('quizSubmitBtn').hidden = true;
+  $('quizNextBtn').hidden = true;
+  $('quizProgress').textContent = quizQuestions.length + '/' + quizQuestions.length;
+
+  // Back button after short delay
+  setTimeout(() => {
+    $('quizNextBtn').hidden = false;
+    $('quizNextBtn').textContent = '← Zur Weltauswahl';
+    $('quizNextBtn').onclick = () => { showScreen('world'); renderWorldSelect(); };
+  }, 800);
+}
+
+function setsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const v of a) if (!b.has(v)) return false;
+  return true;
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 // ----------------------------- Init -----------------------------
 function init() {
   if (!window.fontoxpath) {
@@ -1489,9 +1844,15 @@ function init() {
     console.warn('SaxonJS nicht geladen — XSLT-2.0-Challenges werden Fehlermeldung zeigen. CDN-Verbindung prüfen.');
   }
   wireEvents();
+  wireIntro();
+  wireGlossary();
   updateComboUI();
   renderWorldSelect();
   showScreen('world');
+  maybeShowIntro();
+
+  // Mobile tabs: set initial state
+  switchMobileTab('code');
 }
 document.addEventListener('DOMContentLoaded', init);
 
@@ -1502,8 +1863,10 @@ window.wegaLearn = {
   run: runChallenge,
   state: () => state,
   challenges: () => window.CHALLENGES,
+  quiz: () => window.QUIZ,
   wrapXslt: wrapXsltSolution,
   checkAchievement,
   buildReviewQueue,
-  startReview: startReviewMode
+  startReview: startReviewMode,
+  startQuiz
 };
