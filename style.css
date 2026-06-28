@@ -91,11 +91,12 @@ kbd {
 
 /* -------------------------- World select -------------------------- */
 .world-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;
   margin-top: 8px;
 }
-@media (max-width: 900px) { .world-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .world-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .world-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px)  { .world-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .world-grid { grid-template-columns: 1fr; } }
 
 .world-card {
   background: var(--panel); border: 1px solid var(--border);
@@ -240,3 +241,88 @@ kbd {
 
 .stat.pulse { animation: statPulse .5s; }
 @keyframes statPulse { 0%{transform:scale(1);} 50%{transform:scale(1.18);} 100%{transform:scale(1);} }
+
+/* ============================================================
+   Konzept-Karten
+   ============================================================ */
+.concept-overlay {
+  position: fixed; inset: 0; background: #0a0e1ccc;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 80; backdrop-filter: blur(3px);
+}
+.concept-card-panel {
+  background: var(--panel); border: 1px solid var(--accent);
+  border-radius: 16px; padding: 0; max-width: 600px; width: 90%;
+  animation: popIn .3s; display: flex; flex-direction: column;
+  max-height: 90vh;
+}
+.concept-card-header {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel-2); padding: 16px 20px;
+  border-radius: 16px 16px 0 0; border-bottom: 1px solid var(--border);
+}
+.concept-card-icon { font-size: 26px; flex-shrink: 0; }
+.concept-card-title { font-size: 17px; font-weight: 700; color: var(--accent); }
+.concept-card-body {
+  padding: 20px; overflow-y: auto; flex: 1;
+}
+.concept-card-pre {
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.7;
+  margin: 0; white-space: pre-wrap; color: var(--text);
+}
+.concept-card-btn {
+  margin: 0 20px 20px; align-self: flex-end;
+}
+
+/* ============================================================
+   Multiple-Choice Panel (explain)
+   ============================================================ */
+.mc-panel {
+  margin-top: 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.mc-option {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 18px; text-align: left;
+  color: var(--text); font-size: 14px; font-family: var(--sans);
+  cursor: pointer; transition: .15s; display: flex; gap: 12px; align-items: flex-start;
+}
+.mc-option:hover:not(:disabled) { border-color: var(--accent); background: var(--panel-2); }
+.mc-option:disabled { cursor: default; }
+.mc-option.mc-correct { border-color: var(--success); background: #1a3d1f; color: #a8f0a8; }
+.mc-option.mc-wrong   { border-color: var(--error);   background: #3d1a1a; color: #f0a8a8; }
+.mc-letter {
+  font-family: var(--mono); font-weight: 700; font-size: 13px;
+  color: var(--accent); min-width: 18px; flex-shrink: 0; padding-top: 1px;
+}
+
+/* ============================================================
+   Write-Only Panel (self-assessment)
+   ============================================================ */
+.wo-panel {
+  margin-top: 16px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 18px;
+}
+.wo-instruction { color: var(--text-dim); font-size: 14px; margin: 0 0 14px; line-height: 1.5; }
+.wo-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+#woSelfCorrect { border-color: var(--success); color: var(--success); }
+#woSelfCorrect:hover { background: #1a3d1f; }
+#woSelfWrong   { border-color: var(--error); color: var(--error); }
+#woSelfWrong:hover { background: #3d1a1a; }
+
+/* work-area: single-column when XML panel is hidden */
+.work-area .xml-panel[hidden] + .panel {
+  grid-column: 1 / -1;
+}
+
+/* task text for challenges where task contains code snippets */
+#cTask.code-task {
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background: #0f1830;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  overflow-x: auto;
+}

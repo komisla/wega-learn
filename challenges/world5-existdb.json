@@ -1,0 +1,278 @@
+[
+  {
+    "id": "w5c01",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "declare function verstehen",
+    "task": "Was macht die folgende XQuery-Deklaration?\n\ndeclare function local:person-name($key as xs:string) as xs:string? {\n  let $person := doc(concat('/db/apps/WeGA-WebApp/data/persons/', $key, '.xml'))\n  return $person//tei:persName[@type='reg']/string()\n};",
+    "type": "explain",
+    "fixture": null,
+    "conceptTag": "XQuery-Grundstruktur",
+    "options": [
+      "Importiert ein externes XQuery-Modul aus der Datenbank",
+      "Deklariert eine wiederverwendbare Funktion, die für eine WeGA-ID das normierte Personennamen-Element liefert",
+      "Erstellt eine globale Variable mit dem Namen 'person-name'",
+      "Definiert einen XML-Namespace mit dem Präfix 'local'"
+    ],
+    "correctOption": 1,
+    "hints": [
+      "declare function leitet immer eine Funktionsdeklaration ein.",
+      "local: ist der Namespace-Präfix für benutzerdefinierte Funktionen in XQuery.",
+      "Der Körper in { } enthält let und return — das ist ein FLWOR-Ausdruck."
+    ],
+    "solution": "B — Deklariert eine wiederverwendbare Funktion",
+    "explanation": "declare function local:name($param) { ... }; ist die XQuery-Syntax für Funktionen. local: ist der Standard-Präfix für eigene Funktionen. as xs:string? bedeutet: Rückgabetyp ist ein optionaler String (? = 0 oder 1 Wert). Der Körper lädt ein Dokument mit doc() und gibt den normalisierten Personennamen zurück.",
+    "expected": null,
+    "expectedType": "choice"
+  },
+  {
+    "id": "w5c02",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "module namespace vs. import module",
+    "task": "Was ist der Unterschied zwischen diesen beiden Deklarationen?\n\nmodule namespace app=\"http://xquery.weber-gesamtausgabe.de/modules/app\";\n\nimport module namespace wega-util=\"http://xquery.weber-gesamtausgabe.de/modules/wega-util\"\n  at \"wega-util.xqm\";",
+    "type": "explain",
+    "fixture": null,
+    "conceptTag": "XQuery-Grundstruktur",
+    "options": [
+      "Kein Unterschied — beide importieren Module",
+      "module namespace deklariert das aktuelle Modul (wer ich bin). import module namespace lädt ein externes Modul (was ich nutze).",
+      "module namespace gilt nur in eXist-db, import module namespace ist Standard-XQuery",
+      "module namespace ist für XML-Namespaces, import module namespace für JavaScript-Module"
+    ],
+    "correctOption": 1,
+    "hints": [
+      "module namespace steht ganz oben in Bibliotheks-Modulen (.xqm-Dateien).",
+      "import module namespace braucht at '...' damit eXist-db die Datei findet.",
+      "Hauptmodule (.xql) deklarieren keinen module namespace — die werden direkt aufgerufen."
+    ],
+    "solution": "B — module namespace deklariert das aktuelle Modul; import module namespace lädt ein fremdes",
+    "explanation": "module namespace app=\"...\" ist der Header eines Bibliotheks-Moduls: Es sagt 'Ich bin das Modul mit diesem Namespace'. import module namespace wega-util=\"...\" at \"...\" lädt ein anderes Modul in den aktuellen Scope — wie 'import' in Python oder JavaScript. Die at-Klausel gibt den physischen Pfad an. Haupt-XQL-Dateien deklarieren keinen eigenen Namespace, sondern importieren nur.",
+    "expected": null,
+    "expectedType": "choice"
+  },
+  {
+    "id": "w5c03",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "doc() vs. collection()",
+    "task": "Wann verwendest du doc() und wann collection()?\n\ndoc('/db/data/A040001.xml')\ncollection('/db/data/letters')//tei:TEI",
+    "type": "explain",
+    "fixture": null,
+    "conceptTag": "XQuery-Grundstruktur",
+    "options": [
+      "doc() ist schneller, collection() ist genauer — je nach Performancebedarf wählen",
+      "doc() ist für alte eXist-Versionen, collection() für neue",
+      "doc() lädt genau ein XML-Dokument anhand seines Pfades. collection() gibt alle Dokumente in einem Verzeichnis zurück — für Abfragen über viele Dokumente gleichzeitig.",
+      "doc() gibt rohen XML-Text zurück, collection() gibt DOM-Knoten"
+    ],
+    "correctOption": 2,
+    "hints": [
+      "doc() braucht einen vollständigen Datei-Pfad inklusive .xml-Endung.",
+      "collection() braucht nur den Ordner-Pfad, liefert alle darin enthaltenen Dokumente.",
+      "In der WeGA: doc() für 'gib mir Brief A040001', collection() für 'alle Briefe von 1817'."
+    ],
+    "solution": "C — doc() = ein Dokument, collection() = viele Dokumente in einem Verzeichnis",
+    "explanation": "doc('/db/data/A040001.xml') öffnet genau dieses eine Dokument — du kennst die ID. collection('/db/data/letters') öffnet alle XML-Dateien in diesem Verzeichnis. Kombiniert mit //tei:TEI und FLWOR kann man so die gesamte Briefdatenbank abfragen: 'alle Briefe von Absender X', 'alle Dokumente aus 1817' etc.",
+    "expected": null,
+    "expectedType": "choice"
+  },
+  {
+    "id": "w5c04",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "request:get-parameter() Standardwert",
+    "task": "Was passiert, wenn der URL-Parameter 'id' nicht übergeben wird?\n\nlet $id := request:get-parameter('id', '')",
+    "type": "explain",
+    "fixture": null,
+    "conceptTag": "HTTP in eXist-db",
+    "options": [
+      "eXist-db wirft einen Fehler und bricht ab",
+      "$id bekommt den Wert '' (leerer String) — den Standardwert (zweites Argument)",
+      "$id bekommt den Wert () — eine leere Sequenz",
+      "Die Funktion gibt undefined zurück"
+    ],
+    "correctOption": 1,
+    "hints": [
+      "Das zweite Argument von request:get-parameter() ist der Fallback-Wert.",
+      "Bei '' (leerem String) als Fallback musst du danach prüfen: if ($id = '') then error(...) else ..."
+    ],
+    "solution": "B — $id = '' (der Standardwert aus dem zweiten Argument)",
+    "explanation": "request:get-parameter('paramname', 'default') ist das Standard-Pattern in eXist-db. Das zweite Argument ist der Rückgabewert, wenn der Parameter fehlt. '' (leerer String) als Default ist üblich — dann prüft man nachher: if ($id = '') then response:set-status-code(400) else .... Ein anderer üblicher Fallback: () für eine leere Sequenz.",
+    "expected": null,
+    "expectedType": "choice"
+  },
+  {
+    "id": "w5c05",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "HTTP-Response als JSON",
+    "task": "Schreibe eine eXist-db XQuery-Funktion, die:\n1. Einen 'id'-Parameter liest (Fallback: '')\n2. Das Dokument lädt: doc('/db/data/' || $id || '.xml')\n3. Den normierten Personennamen (tei:persName[@type='reg']) holt\n4. Als JSON zurückgibt: { \"name\": \"...\" }\n\nNutze: response:set-header(), serialize(), map{}",
+    "type": "write-only",
+    "fixture": null,
+    "conceptTag": "HTTP in eXist-db",
+    "hints": [
+      "Deklariere zuerst den tei-Namespace: declare namespace tei=\"http://www.tei-c.org/ns/1.0\";",
+      "response:set-header('Content-Type', 'application/json') muss vor der Ausgabe kommen.",
+      "serialize(map { 'name': $name }, map { 'method': 'json' }) wandelt eine XQuery-map in JSON um."
+    ],
+    "solution": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nlet $id := request:get-parameter('id', '')\nlet $doc := doc('/db/data/' || $id || '.xml')\nlet $name := $doc//tei:persName[@type='reg']/string()\nlet $_ := response:set-header('Content-Type', 'application/json')\nreturn serialize(\n  map { 'name': $name },\n  map { 'method': 'json' }\n)",
+    "explanation": "Das ist das Grundmuster für JSON-Endpunkte in der WeGA. request:get-parameter() holt den URL-Parameter. Doc() + XPath holt den Wert. map{} baut eine XQuery-Map (= JSON-Objekt). serialize() mit method:'json' wandelt das in JSON-Text um. response:set-header() setzt den richtigen MIME-Type.",
+    "expected": null,
+    "expectedType": "write-only"
+  },
+  {
+    "id": "w5c06",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "try/catch in XQuery",
+    "task": "Was passiert wenn das Dokument nicht existiert?\n\ntry {\n  doc(concat('/db/data/', $id, '.xml'))//tei:persName[@type='reg']/string()\n} catch * {\n  error((), 'Dokument nicht gefunden: ' || $id)\n}",
+    "type": "explain",
+    "fixture": null,
+    "conceptTag": "HTTP in eXist-db",
+    "options": [
+      "doc() gibt eine leere Sequenz zurück, der catch-Block wird nie ausgeführt",
+      "doc() wirft einen Fehler → catch * fängt ALLE Fehler → error() löst einen neuen Fehler aus, den eXist-db als HTTP 500 ausliefert",
+      "Der Code gibt 'Dokument nicht gefunden: ...' als normalen String zurück",
+      "XQuery hat kein try/catch — dieser Code ist ungültig"
+    ],
+    "correctOption": 1,
+    "hints": [
+      "doc() wirft einen Fehler wenn die Datei nicht existiert (anders als in XPath wo es eine leere Sequenz wäre).",
+      "catch * = fange alle Fehler-Codes. In XQuery 3.1 gibt es spezifischere Patterns.",
+      "error() löst absichtlich einen Fehler aus — eXist-db wandelt das in einen HTTP-Fehler."
+    ],
+    "solution": "B — doc() wirft Fehler → catch fängt ihn → error() löst neuen Fehler aus → HTTP 500",
+    "explanation": "In eXist-db wirft doc() einen err:FODC0002-Fehler wenn das Dokument nicht existiert. try/catch fängt das ab. error((), 'message') löst danach einen eigenen Fehler aus — das ist das Pattern für kontrollierte Fehlermeldungen. eXist-db liefert das als HTTP 500 Internal Server Error aus. Besser wäre response:set-status-code(404) vor error().",
+    "expected": null,
+    "expectedType": "choice"
+  },
+  {
+    "id": "w5c07",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "Alle Briefe eines Absenders",
+    "task": "Schreibe XQuery (kein Browser-Runner), das alle Briefe findet,\nwo Caroline Brandt (@key='A002078') Absenderin ist.\n\nNutze collection('/db/data/letters') und FLWOR.\nGib für jeden Brief die @xml:id zurück.",
+    "type": "write-only",
+    "fixture": null,
+    "conceptTag": "TEI-Datenbankabfragen",
+    "hints": [
+      "collection('/db/data/letters')//tei:TEI iteriert über alle Briefe.",
+      "In der sent-Aktion prüfst du: tei:correspAction[@type='sent']//tei:persName/@key = 'A002078'",
+      "for $l in ... where ... return $l/@xml:id/string()"
+    ],
+    "solution": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nfor $l in collection('/db/data/letters')//tei:TEI\nwhere $l//tei:correspAction[@type='sent']//tei:persName/@key = 'A002078'\nreturn string($l/@xml:id)",
+    "explanation": "collection() öffnet alle Dokumente im Ordner. FLWOR filtert dann mit where per Predicate auf den @key-Wert. Das ist der Standard-Pattern für 'alle Briefe von Person X' in der WeGA-Datenbank.",
+    "expected": null,
+    "expectedType": "write-only"
+  },
+  {
+    "id": "w5c08",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "ft:query vs. contains()",
+    "task": "Was ist der Unterschied zwischen diesen zwei Abfragen?\n\ncollection('/db/letters')//tei:body[ft:query(., 'Freischütz')]\n\ncollection('/db/letters')//tei:body[contains(string(.), 'Freischütz')]",
+    "type": "explain",
+    "fixture": null,
+    "conceptTag": "TEI-Datenbankabfragen",
+    "options": [
+      "Kein praktischer Unterschied, ft:query ist nur neuere Syntax",
+      "ft:query nutzt einen Lucene-Volltext-Index — extrem schnell, index-basiert. contains() prüft jeden String einzeln — langsam bei großen Sammlungen, aber kein Index nötig.",
+      "ft:query ist case-sensitive, contains() ist case-insensitiv",
+      "ft:query gibt Rangfolgen zurück, contains() nur true/false — aber beide sind gleich schnell"
+    ],
+    "correctOption": 1,
+    "hints": [
+      "eXist-db indiziert Volltexte mit Lucene wenn in der collection.xconf konfiguriert.",
+      "Ohne Lucene-Index fällt ft:query auf einen sequentiellen Scan zurück.",
+      "Bei der WeGA (tausende Briefe) ist der Unterschied Millisekunden vs. Sekunden."
+    ],
+    "solution": "B — ft:query nutzt den Lucene-Index (schnell), contains() scannt sequentiell (langsam)",
+    "explanation": "ft:query() ist eXist-dbs Volltext-Suchanfrage über den Lucene-Index. Wenn die collection.xconf einen <text match=\"//tei:body\"/>-Index definiert, ist die Suche O(log n) — also blitzschnell auch bei tausenden Dokumenten. contains(string(.), 'X') liest jeden Knoten einzeln, ist O(n) und wird bei der WeGA-Datenmenge sehr langsam. Für Produktiv-Code immer ft:query bevorzugen.",
+    "expected": null,
+    "expectedType": "choice"
+  },
+  {
+    "id": "w5c09",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "Briefe pro Jahr zählen",
+    "task": "Schreibe XQuery, das zählt wie viele Briefe pro Jahr in\n'/db/data/letters' vorhanden sind. Nutze group by.\n\nGib aus: 'Jahr: Anzahl' (z.B. '1817: 42').",
+    "type": "write-only",
+    "fixture": null,
+    "conceptTag": "TEI-Datenbankabfragen",
+    "hints": [
+      "Das Jahr steht in @when des sent-Datums: substring(@when, 1, 4)",
+      "group by $year fasst alle Briefe desselben Jahres zusammen.",
+      "Nach group by: count($l) zählt die Gruppe. order by $year für chronologische Ausgabe."
+    ],
+    "solution": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nfor $l in collection('/db/data/letters')//tei:TEI\nlet $year := substring($l//tei:correspAction[@type='sent']/tei:date/@when, 1, 4)\nwhere $year != ''\ngroup by $year\norder by $year ascending\nreturn concat($year, ': ', count($l))",
+    "explanation": "group by ist eine XQuery-3.0-Erweiterung: alle Iterationen mit demselben $year werden zu einer Gruppe zusammengefasst. Danach ist $l eine Sequenz aller Briefe dieses Jahres, count($l) zählt sie. WeGA-Einsatz: Chronologie-Übersichten, Statistik-Endpunkte.",
+    "expected": null,
+    "expectedType": "write-only"
+  },
+  {
+    "id": "w5c10",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "Namespace-Deklaration in XQuery",
+    "task": "Warum muss am Anfang jedes XQuery-Moduls, das TEI-Daten abfragt, diese Zeile stehen?\n\ndeclare namespace tei=\"http://www.tei-c.org/ns/1.0\";",
+    "type": "explain",
+    "fixture": null,
+    "conceptTag": "TEI-Datenbankabfragen",
+    "options": [
+      "Damit eXist-db die TEI-Schema-Datei nachladen kann",
+      "XQuery bindet Namespace-Präfixe nicht automatisch aus den Dokumenten. Ohne die Deklaration findet //tei:persName nichts — der Präfix 'tei' ist nicht definiert.",
+      "Das ist nur eine Konvention der WeGA — technisch optional",
+      "Damit die Ausgabe automatisch im TEI-Namespace serialisiert wird"
+    ],
+    "correctOption": 1,
+    "hints": [
+      "Teste selbst: schreibe //persName ohne Namespace-Deklaration — eXist-db findet nichts.",
+      "Das Dokument hat xmlns=\"http://www.tei-c.org/ns/1.0\" — das ist der Default-Namespace.",
+      "XQuery-Ausdrücke nutzen per Default KEINEN Namespace — auch nicht den aus dem Dokument."
+    ],
+    "solution": "B — XQuery kennt Namespace-Präfixe nicht automatisch aus den Dokumenten",
+    "explanation": "TEI-Dokumente haben xmlns=\"http://www.tei-c.org/ns/1.0\" — das bedeutet alle Elemente gehören zu diesem Namespace. XQuery-Abfragen müssen Namespaces explizit binden. Ohne declare namespace tei=... würde //tei:persName einen Fehler werfen (unbekannter Präfix) oder nichts finden. Das ist dasselbe Problem wie im Browser: ohne Namespace-Resolver findet FontoxPath ohne tei:-Präfix ebenfalls nichts.",
+    "expected": null,
+    "expectedType": "choice"
+  },
+  {
+    "id": "w5c11",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "WeGA API-Endpunkt erweitern",
+    "task": "Erweitere diese Funktion um den Absender-Namen:\n\ndeclare function api:document-meta($id as xs:string) as map(*) {\n  let $doc := doc('/db/apps/WeGA-data/' || $id || '.xml')\n  let $title := $doc//tei:title[@level='a']/string()\n  let $date := $doc//tei:correspAction[@type='sent']/tei:date/@when/string()\n  return map {\n    'id': $id,\n    'title': $title,\n    'date': $date\n  }\n};\n\nFüge einen 'sender'-Schlüssel hinzu.",
+    "type": "write-only",
+    "fixture": null,
+    "conceptTag": "WeGA-Praxis",
+    "hints": [
+      "Der Absender steht in //tei:correspAction[@type='sent']//tei:persName/string().",
+      "let $sender := ... dann 'sender': $sender in der map{}.",
+      "map{} ist ein XQuery-3.1-Konstrukt: map { 'key': $value, ... }"
+    ],
+    "solution": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\ndeclare function api:document-meta($id as xs:string) as map(*) {\n  let $doc := doc('/db/apps/WeGA-data/' || $id || '.xml')\n  let $title := $doc//tei:title[@level='a']/string()\n  let $date := $doc//tei:correspAction[@type='sent']/tei:date/@when/string()\n  let $sender := $doc//tei:correspAction[@type='sent']//tei:persName/string()\n  return map {\n    'id': $id,\n    'title': $title,\n    'date': $date,\n    'sender': $sender\n  }\n};",
+    "explanation": "map{} ist das XQuery-3.1-Konstrukt für assoziative Arrays (= JSON-Objekte). Man kann beliebig viele Schlüssel-Wert-Paare hinzufügen. $sender enthält den String-Inhalt des ersten Absender-persName. Bei mehreren Absendern wäre array{ for $p in ... return string($p) } das richtige Konstrukt für ein JSON-Array.",
+    "expected": null,
+    "expectedType": "write-only"
+  },
+  {
+    "id": "w5c12",
+    "world": 5,
+    "worldName": "eXist-db Query",
+    "title": "Komplettes XQL-Modul schreiben",
+    "task": "Schreibe ein vollständiges XQuery-Bibliotheks-Modul (.xqm) mit:\n\n1. Namespace-Deklaration: module namespace local=\"http://wega-learn.example/local\"\n2. TEI-Namespace binden\n3. Helper-Funktion: local:format-name($persName as element()) as xs:string\n   → gibt '@type=reg Variante oder text() zurück'\n4. Haupt-Funktion: local:letter-summary($id as xs:string) as map(*)\n   → lädt Dokument, extrahiert Datum und Sender, gibt map{} zurück",
+    "type": "write-only",
+    "fixture": null,
+    "conceptTag": "WeGA-Praxis",
+    "hints": [
+      "module namespace local=\"...\" steht ganz oben (kein main-Body, nur Funktionen).",
+      "declare namespace tei=\"http://www.tei-c.org/ns/1.0\"; kommt danach.",
+      "local:format-name: if ($persName[@type='reg']) then string($persName[@type='reg']) else string($persName[1])"
+    ],
+    "solution": "module namespace local=\"http://wega-learn.example/local\";\ndeclare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\n(:~\n : Gibt den normierten Namen einer tei:persName-Gruppe zurück.\n : @param $persName das persName-Element\n : @return normierter Namens-String\n :)\ndeclare function local:format-name($persName as element()) as xs:string {\n  if ($persName[@type='reg'])\n  then string($persName[@type='reg'])\n  else string($persName[1])\n};\n\n(:~\n : Gibt eine Zusammenfassung eines Briefes als map zurück.\n : @param $id die WeGA-ID des Briefes (z.B. A040001)\n : @return map mit id, date, sender\n :)\ndeclare function local:letter-summary($id as xs:string) as map(*) {\n  let $doc := doc('/db/apps/WeGA-data/' || $id || '.xml')\n  let $date := $doc//tei:correspAction[@type='sent']/tei:date/@when/string()\n  let $sender := $doc//tei:correspAction[@type='sent']//tei:persName[1]\n  return map {\n    'id': $id,\n    'date': $date,\n    'sender': local:format-name($sender)\n  }\n};",
+    "explanation": "Ein Bibliotheks-Modul beginnt mit module namespace — es hat keinen ausführbaren Hauptkörper, nur Funktionsdeklarationen. XDoc-Kommentare (:~ ... :) dokumentieren die API. local:format-name zeigt das WeGA-Pattern: normierte Darstellung ([@type='reg']) bevorzugen, Fallback auf ersten Wert. local:letter-summary kombiniert doc(), XPath-Navigation und map{} — das Grundmuster für alle WeGA-API-Endpunkte.",
+    "expected": null,
+    "expectedType": "write-only"
+  }
+]

@@ -6,16 +6,18 @@
 
 // ----------------------------- Config -----------------------------
 const XP_BASE = 100;
-const HINT_PENALTY = 25;   // pro genutztem Hint
-const PERFECT_BONUS = 50;  // kein Hint, erster Versuch korrekt
+const HINT_PENALTY = 25;
+const PERFECT_BONUS = 50;
 const STORAGE_KEY = 'wega-learn-state';
 
 const WORLD_META = {
   1: { icon: '🧭', name: 'XPath Navigator', tech: 'XPath 3.1' },
   2: { icon: '⚗️', name: 'FLWOR Forge',    tech: 'XQuery / FLWOR' },
   3: { icon: '🔧', name: 'XSLT Basics',    tech: 'XSLT 1.0' },
-  4: { icon: '🏛️', name: 'WeGA Patterns',  tech: 'XSLT 1.0 + XPath' }
+  4: { icon: '🏛️', name: 'WeGA Patterns',  tech: 'XSLT 1.0 + XPath' },
+  5: { icon: '🗄️', name: 'eXist-db Query', tech: 'XQuery + eXist-db' }
 };
+const MAX_WORLD = 5;
 
 const XSLT_STARTER =
 `<?xml version="1.0" encoding="UTF-8"?>
@@ -31,32 +33,38 @@ const XSLT_STARTER =
 
 </xsl:stylesheet>`;
 
-// Namespace-Resolver für FontoxPath
-const nsResolver = {
-  lookupNamespaceURI: prefix => ({
-    'tei': 'http://www.tei-c.org/ns/1.0',
-    'xml': 'http://www.w3.org/XML/1998/namespace'
-  }[prefix] || null)
-};
-// FontoxPath akzeptiert auch eine reine Funktion als namespaceResolver:
-const nsResolverFn = p => nsResolver.lookupNamespaceURI(p);
+const XQUERY_STARTER =
+`declare namespace tei="http://www.tei-c.org/ns/1.0";
+
+(: Dein Code hier :)
+`;
+
+const nsResolverFn = p => ({
+  'tei': 'http://www.tei-c.org/ns/1.0',
+  'xml': 'http://www.w3.org/XML/1998/namespace'
+}[p] || null);
 
 // ----------------------------- State -----------------------------
 let state = loadState();
-let current = null;          // { world, index } während einer Challenge
+let current = null;
 let hintsUsed = 0;
 let attempts = 0;
-let solved = false;          // aktuelle Challenge in dieser Sitzung gelöst?
+let solved = false;
 
 function defaultState() {
-  return { xp: 0, streak: 0, completed: [], unlockedWorlds: [1] };
+  return {
+    xp: 0,
+    streak: 0,
+    completed: [],
+    unlockedWorlds: [1],
+    seenConcepts: []   // keys like "1:Grundnavigation"
+  };
 }
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    const s = JSON.parse(raw);
-    return Object.assign(defaultState(), s);
+    return Object.assign(defaultState(), JSON.parse(raw));
   } catch (e) { return defaultState(); }
 }
 function saveState() {
@@ -79,7 +87,8 @@ const els = {
   feedbackMsg: $('feedbackMsg'),
   worldDoneOverlay: $('worldDoneOverlay'), worldDoneTitle: $('worldDoneTitle'),
   worldDoneText: $('worldDoneText'), worldDoneBtn: $('worldDoneBtn'),
-  xpFloatLayer: $('xpFloatLayer')
+  xpFloatLayer: $('xpFloatLayer'),
+  conceptOverlay: $('conceptOverlay')
 };
 
 // ----------------------------- Data access -----------------------------
@@ -94,13 +103,24 @@ function isWorldDone(world) {
   const ch = worldChallenges(world);
   return ch.length > 0 && ch.every(c => isCompleted(c.id));
 }
+function conceptKey(world, tag) { return world + ':' + tag; }
+function hasSeenConcept(world, tag) {
+  return state.seenConcepts.includes(conceptKey(world, tag));
+}
+function markConceptSeen(world, tag) {
+  const k = conceptKey(world, tag);
+  if (!state.seenConcepts.includes(k)) {
+    state.seenConcepts.push(k);
+    saveState();
+  }
+}
 
 // ============================================================
 //  Screen 1: Weltauswahl
 // ============================================================
 function renderWorldSelect() {
   els.worldGrid.innerHTML = '';
-  for (let w = 1; w <= 4; w++) {
+  for (let w = 1; w <= MAX_WORLD; w++) {
     const meta = WORLD_META[w];
     const total = worldChallenges(w).length;
     const done = worldCompletedCount(w);
@@ -132,7 +152,7 @@ function renderWorldSelect() {
       const skip = document.createElement('button');
       skip.className = 'skip-link';
       skip.textContent = 'Überspringen (freischalten)';
-      skip.addEventListener('click', () => { unlockWorld(w); });
+      skip.addEventListener('click', () => unlockWorld(w));
       actions.appendChild(skip);
     }
     els.worldGrid.appendChild(card);
@@ -149,11 +169,74 @@ function unlockWorld(world) {
 }
 
 function startWorld(world) {
-  // erste nicht gelöste Challenge, sonst erste
   const ch = worldChallenges(world);
   let idx = ch.findIndex(c => !isCompleted(c.id));
   if (idx === -1) idx = 0;
   openChallenge(world, idx);
+}
+
+// ============================================================
+//  Concept Card
+// ============================================================
+function needsConceptCard(world, index) {
+  const ch = challengeAt(world, index);
+  if (!ch || !ch.conceptTag) return false;
+  const tag = ch.conceptTag;
+  if (hasSeenConcept(world, tag)) return false;
+  // nur zeigen wenn entweder erste Challenge der Gruppe ODER
+  // vorherige Challenge hatte anderen conceptTag
+  if (index === 0) return true;
+  const prev = challengeAt(world, index - 1);
+  return !prev || prev.conceptTag !== tag;
+}
+
+function showConceptCard(world, conceptTag, onDone) {
+  const concepts = window.CONCEPTS || {};
+  const key = conceptKey(world, conceptTag);
+  const data = concepts[key];
+
+  markConceptSeen(world, conceptTag);
+
+  const overlay = els.conceptOverlay;
+  overlay.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'concept-card-panel';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'concept-card-header';
+  header.innerHTML =
+    '<span class="concept-card-icon">' + (data ? data.icon : '📖') + '</span>' +
+    '<span class="concept-card-title">Konzept: ' + escapeHtml(conceptTag) + '</span>';
+  card.appendChild(header);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'concept-card-body';
+  if (data && data.lines) {
+    const pre = document.createElement('pre');
+    pre.className = 'concept-card-pre';
+    pre.textContent = data.lines.join('\n');
+    body.appendChild(pre);
+  } else {
+    body.textContent = '(Kein Inhalt vorhanden)';
+  }
+  card.appendChild(body);
+
+  // Button
+  const btn = document.createElement('button');
+  btn.className = 'primary-btn concept-card-btn';
+  btn.textContent = 'Verstanden →';
+  btn.addEventListener('click', () => {
+    overlay.hidden = true;
+    onDone();
+  });
+  card.appendChild(btn);
+
+  overlay.appendChild(card);
+  overlay.hidden = false;
+  btn.focus();
 }
 
 // ============================================================
@@ -165,6 +248,17 @@ function showScreen(which) {
 }
 
 function openChallenge(world, index) {
+  // Concept card gate
+  if (needsConceptCard(world, index)) {
+    const ch = challengeAt(world, index);
+    showScreen('challenge');
+    showConceptCard(world, ch.conceptTag, () => _doOpenChallenge(world, index));
+    return;
+  }
+  _doOpenChallenge(world, index);
+}
+
+function _doOpenChallenge(world, index) {
   const ch = challengeAt(world, index);
   if (!ch) return;
   current = { world, index };
@@ -176,26 +270,35 @@ function openChallenge(world, index) {
   els.cProgress.textContent = (index + 1) + ' / ' + worldChallenges(world).length;
   els.cTitleText.textContent = ch.title;
   els.cTask.textContent = ch.task;
+  // code-task styling for challenges where task contains code blocks (explain/write-only)
+  els.cTask.classList.toggle('code-task', ch.type === 'explain' || ch.type === 'write-only');
   els.cConcept.textContent = ch.conceptTag || '';
-  els.cFixtureName.textContent = ch.fixture;
 
-  // XML-Fixture anzeigen + highlighten
-  const xml = window.TEI_FIXTURES[ch.fixture] || '(Fixture nicht gefunden)';
-  els.xmlView.textContent = xml;
-  els.xmlView.removeAttribute('data-highlighted');
-  if (window.hljs) { els.xmlView.className = 'language-xml'; window.hljs.highlightElement(els.xmlView); }
+  const fixtureName = ch.fixture || '';
+  els.cFixtureName.textContent = fixtureName;
 
-  // Editor-Label + Startercode
-  if (ch.type === 'xpath')      els.editorLabel.textContent = 'Dein XPath-Ausdruck';
-  else if (ch.type === 'flwor') els.editorLabel.textContent = 'Dein FLWOR/XQuery-Ausdruck';
-  else                          els.editorLabel.textContent = 'Dein XSLT-Stylesheet';
+  // XML panel — show fixture if available, else code snippet in task
+  const xml = fixtureName ? (window.TEI_FIXTURES[fixtureName] || '(Fixture nicht gefunden)') : '';
+  if (xml) {
+    els.xmlView.textContent = xml;
+    els.xmlView.removeAttribute('data-highlighted');
+    if (window.hljs) { els.xmlView.className = 'language-xml'; window.hljs.highlightElement(els.xmlView); }
+    els.xmlView.closest('.xml-panel').hidden = false;
+  } else {
+    els.xmlView.textContent = '';
+    // For explain/write-only, task text contains the code — hide xml panel
+    els.xmlView.closest('.xml-panel').hidden = true;
+  }
 
-  els.editor.value = ch.type === 'xslt' ? XSLT_STARTER : '';
+  // Configure UI per challenge type
+  setupChallengeUI(ch);
 
-  // Erwartet anzeigen
-  els.expectedView.textContent = formatExpected(ch);
+  showScreen('challenge');
+  if (ch.type !== 'explain') setTimeout(() => els.editor.focus(), 50);
+}
 
-  // Reset UI
+function setupChallengeUI(ch) {
+  // Reset common UI
   els.outputView.textContent = '—';
   els.outputView.className = 'io-box';
   els.expectedView.className = 'io-box';
@@ -205,10 +308,132 @@ function openChallenge(world, index) {
   els.hintArea.innerHTML = '';
   els.nextBtn.hidden = true;
   els.hintBtn.disabled = false;
+
+  // Remove any previously injected special panels
+  const prev = $('mcPanel');
+  if (prev) prev.remove();
+  const prevWo = $('woPanel');
+  if (prevWo) prevWo.remove();
+
+  if (ch.type === 'explain') {
+    setupExplainUI(ch);
+  } else if (ch.type === 'write-only') {
+    setupWriteOnlyUI(ch);
+  } else {
+    // xpath / flwor / xslt
+    els.editorLabel.textContent =
+      ch.type === 'xpath'  ? 'Dein XPath-Ausdruck' :
+      ch.type === 'flwor'  ? 'Dein FLWOR/XQuery-Ausdruck' :
+                             'Dein XSLT-Stylesheet';
+    els.editor.value = ch.type === 'xslt' ? XSLT_STARTER : '';
+    els.editor.hidden = false;
+    els.editorLabel.hidden = false;
+    els.runBtn.hidden = false;
+    els.runBtn.textContent = '▶ Ausführen';
+
+    els.expectedView.textContent = formatExpected(ch);
+    updateHintCount(ch);
+
+    // Show both io panels
+    const ioRow = document.querySelector('.io-row');
+    if (ioRow) ioRow.hidden = false;
+    els.solutionBtn.hidden = false;
+    els.hintBtn.hidden = false;
+  }
+}
+
+// ---- explain (Multiple Choice) ----
+function setupExplainUI(ch) {
+  els.editor.hidden = true;
+  els.editorLabel.hidden = true;
+  els.runBtn.hidden = true;
+  els.solutionBtn.hidden = true;
+  els.hintBtn.hidden = false;
+  updateHintCount(ch);
+  const ioRow = document.querySelector('.io-row');
+  if (ioRow) ioRow.hidden = true;
+
+  const panel = document.createElement('div');
+  panel.id = 'mcPanel';
+  panel.className = 'mc-panel';
+
+  const opts = ch.options || [];
+  opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'mc-option';
+    btn.dataset.idx = i;
+    btn.innerHTML = '<span class="mc-letter">' + String.fromCharCode(65 + i) + '</span> ' + escapeHtml(opt);
+    btn.addEventListener('click', () => handleMCAnswer(ch, i, panel));
+    panel.appendChild(btn);
+  });
+
+  // Insert the panel after the action-bar context — before hintArea
+  const workArea = document.querySelector('.work-area');
+  workArea.after(panel);
+}
+
+function handleMCAnswer(ch, chosen, panel) {
+  const correct = chosen === ch.correctOption;
+  attempts++;
+  // Lock all buttons
+  panel.querySelectorAll('.mc-option').forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === ch.correctOption) btn.classList.add('mc-correct');
+    else if (i === chosen && !correct) btn.classList.add('mc-wrong');
+  });
+
+  if (correct) {
+    els.feedbackMsg.textContent = '✓ Richtig!';
+    els.feedbackMsg.className = 'feedback-msg ok';
+    onCorrect(ch);
+  } else {
+    els.feedbackMsg.textContent = '✗ Nicht ganz — die korrekte Antwort ist grün markiert.';
+    els.feedbackMsg.className = 'feedback-msg bad';
+    // Still show explanation + next
+    showExplanation(ch);
+    els.nextBtn.hidden = false;
+    if (navigator.vibrate) navigator.vibrate(80);
+  }
+}
+
+// ---- write-only (Self-Assessment) ----
+function setupWriteOnlyUI(ch) {
+  els.editorLabel.textContent = 'Dein XQuery-Code';
+  els.editorLabel.hidden = false;
+  els.editor.value = XQUERY_STARTER;
+  els.editor.hidden = false;
+  els.runBtn.hidden = true;
+  els.solutionBtn.hidden = false;
+  els.hintBtn.hidden = false;
   updateHintCount(ch);
 
-  showScreen('challenge');
-  setTimeout(() => els.editor.focus(), 50);
+  const ioRow = document.querySelector('.io-row');
+  if (ioRow) ioRow.hidden = true;
+
+  // Self-assessment buttons
+  const panel = document.createElement('div');
+  panel.id = 'woPanel';
+  panel.className = 'wo-panel';
+
+  panel.innerHTML =
+    '<p class="wo-instruction">eXist-db-Funktionen laufen nicht im Browser — vergleiche deinen Code selbst mit der Lösung.</p>' +
+    '<div class="wo-actions">' +
+    '<button class="ghost-btn" id="woSelfCorrect">✓ Hab ich richtig</button>' +
+    '<button class="ghost-btn" id="woSelfWrong">✗ Noch üben</button>' +
+    '</div>';
+
+  const workArea = document.querySelector('.work-area');
+  workArea.after(panel);
+
+  $('woSelfCorrect').addEventListener('click', () => {
+    attempts = 1;
+    onCorrect(ch);
+  });
+  $('woSelfWrong').addEventListener('click', () => {
+    els.feedbackMsg.textContent = 'Schau dir die Lösung an und versuche es nochmal.';
+    els.feedbackMsg.className = 'feedback-msg bad';
+    revealSolution();
+  });
 }
 
 function updateHintCount(ch) {
@@ -221,7 +446,7 @@ function formatExpected(ch) {
   if (ch.expectedType === 'number') return String(ch.expected);
   if (ch.expectedType === 'stringArray') return JSON.stringify(ch.expected, null, 2);
   if (ch.expectedType === 'html') return prettyHtml(ch.expected);
-  return String(ch.expected);
+  return ''; // explain, write-only
 }
 
 // ============================================================
@@ -230,6 +455,7 @@ function formatExpected(ch) {
 function runChallenge() {
   if (!current) return;
   const ch = challengeAt(current.world, current.index);
+  if (ch.type === 'explain' || ch.type === 'write-only') return; // handled elsewhere
   attempts++;
   let result;
   try {
@@ -241,7 +467,6 @@ function runChallenge() {
   }
   if (result.error) return showError(result.error);
 
-  // Output anzeigen
   els.outputView.textContent = result.display;
   els.outputView.className = 'io-box';
 
@@ -264,8 +489,7 @@ function runXPath(ch, isXQuery) {
   let raw;
   try {
     raw = fx.evaluateXPath(expr, doc, null, null, fx.evaluateXPath.ALL_RESULTS_TYPE, {
-      namespaceResolver: nsResolverFn,
-      language: lang
+      namespaceResolver: nsResolverFn, language: lang
     });
   } catch (err) {
     return { error: humanizeError(err) };
@@ -273,38 +497,24 @@ function runXPath(ch, isXQuery) {
 
   if (ch.expectedType === 'number') {
     const num = typeof raw === 'number' ? raw : Number(coerceToStrings(raw)[0]);
-    return {
-      display: String(num),
-      correct: num === ch.expected
-    };
+    return { display: String(num), correct: num === ch.expected };
   }
-
-  // stringArray
   const arr = coerceToStrings(raw).map(s => normWs(s));
   const expected = ch.expected.map(s => normWs(s));
-  return {
-    display: JSON.stringify(arr, null, 2),
-    correct: arraysEqual(arr, expected)
-  };
+  return { display: JSON.stringify(arr, null, 2), correct: arraysEqual(arr, expected) };
 }
 
-// FontoxPath ALL_RESULTS_TYPE liefert je nach Ausdruck Zahl, String, Node[] o.ä.
 function coerceToStrings(raw) {
   if (raw == null) return [];
-  if (Array.isArray(raw)) {
-    return raw.map(item => nodeToString(item));
-  }
-  if (typeof raw === 'number' || typeof raw === 'boolean' || typeof raw === 'string') {
-    return [String(raw)];
-  }
-  // einzelner Node
+  if (Array.isArray(raw)) return raw.map(item => nodeToString(item));
+  if (typeof raw === 'number' || typeof raw === 'boolean' || typeof raw === 'string') return [String(raw)];
   return [nodeToString(raw)];
 }
 function nodeToString(item) {
   if (item == null) return '';
   if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') return String(item);
-  if (item.nodeType === 2) return item.value;                 // Attribut
-  if (typeof item.textContent === 'string') return item.textContent; // Element/Text
+  if (item.nodeType === 2) return item.value;
+  if (typeof item.textContent === 'string') return item.textContent;
   return String(item);
 }
 
@@ -320,9 +530,7 @@ function runXSLT(ch) {
 
   const xsltDoc = parser.parseFromString(xsltStr, 'application/xml');
   const xsltErr = xsltDoc.querySelector('parsererror');
-  if (xsltErr) {
-    return { error: 'Dein Stylesheet ist kein gültiges XML:\n' + cleanParserError(xsltErr.textContent) };
-  }
+  if (xsltErr) return { error: 'Dein Stylesheet ist kein gültiges XML:\n' + cleanParserError(xsltErr.textContent) };
 
   const proc = new XSLTProcessor();
   try { proc.importStylesheet(xsltDoc); }
@@ -332,41 +540,28 @@ function runXSLT(ch) {
   try { frag = proc.transformToFragment(xmlDoc, document); }
   catch (err) { return { error: 'Transformation fehlgeschlagen: ' + (err.message || err) }; }
 
-  if (!frag) return { error: 'Die Transformation lieferte kein Ergebnis. Passt dein xsl:template match=\"/\"?' };
+  if (!frag) return { error: 'Die Transformation lieferte kein Ergebnis. Passt dein xsl:template match="/"?' };
 
   const container = document.createElement('div');
   container.appendChild(frag.cloneNode(true));
   const actualHtml = container.innerHTML;
-
-  return {
-    display: prettyHtml(actualHtml),
-    correct: compareXSLTOutput(actualHtml, ch.expected)
-  };
+  return { display: prettyHtml(actualHtml), correct: compareXSLTOutput(actualHtml, ch.expected) };
 }
 
 // ============================================================
-//  XSLT-Vergleich: DOM-strukturell, whitespace-tolerant,
-//  ignoriert xmlns-Deklarationen
+//  XSLT-Vergleich
 // ============================================================
 function compareXSLTOutput(actual, expected) {
-  const a = parseFragment(actual);
-  const e = parseFragment(expected);
-  return nodesEqual(a, e, /*strictAttrs*/ false);
+  return nodesEqual(parseFragment(actual), parseFragment(expected));
 }
 function parseFragment(html) {
-  const tpl = document.createElement('template');
-  tpl.innerHTML = html;
-  return tpl.content;
+  const tpl = document.createElement('template'); tpl.innerHTML = html; return tpl.content;
 }
-// Vergleicht zwei DOM-Knotenlisten strukturell.
-// expected gibt die geforderten Attribute vor; nur diese werden geprüft.
 function nodesEqual(aNode, eNode) {
   const aKids = significantChildren(aNode);
   const eKids = significantChildren(eNode);
   if (aKids.length !== eKids.length) return false;
-  for (let i = 0; i < eKids.length; i++) {
-    if (!oneNodeEqual(aKids[i], eKids[i])) return false;
-  }
+  for (let i = 0; i < eKids.length; i++) if (!oneNodeEqual(aKids[i], eKids[i])) return false;
   return true;
 }
 function significantChildren(node) {
@@ -384,26 +579,17 @@ function significantChildren(node) {
 function oneNodeEqual(a, e) {
   if (a.kind !== e.kind) return false;
   if (e.kind === 'text') return a.text === e.text;
-  // Element
   const ael = a.el, eel = e.el;
-  if (ael.tagName.toLowerCase() !== eel.tagName.toLowerCase()) {
-    // Browser fügt bei <table> automatisch <tbody> ein → toleriere.
-    return false;
-  }
-  // Nur die in expected vorhandenen Attribute prüfen (xmlns ignorieren).
+  if (ael.tagName.toLowerCase() !== eel.tagName.toLowerCase()) return false;
   for (const attr of Array.from(eel.attributes)) {
     if (attr.name.startsWith('xmlns')) continue;
     if (normWs(ael.getAttribute(attr.name) || '') !== normWs(attr.value)) return false;
   }
   return nodesEqual(unwrapAutoTbody(ael), unwrapAutoTbody(eel));
 }
-// Falls genau ein <tbody> automatisch eingefügt wurde, dessen Kinder hochziehen,
-// damit Lösungen ohne explizites tbody trotzdem matchen.
 function unwrapAutoTbody(el) {
   const kids = significantChildren(el);
-  if (kids.length === 1 && kids[0].kind === 'el' && kids[0].el.tagName.toLowerCase() === 'tbody') {
-    return kids[0].el;
-  }
+  if (kids.length === 1 && kids[0].kind === 'el' && kids[0].el.tagName.toLowerCase() === 'tbody') return kids[0].el;
   return el;
 }
 
@@ -413,17 +599,16 @@ function unwrapAutoTbody(el) {
 function onCorrect(ch) {
   els.outputView.classList.add('correct');
   els.expectedView.classList.add('correct');
-  els.feedbackMsg.textContent = '✓ Korrekt!';
-  els.feedbackMsg.className = 'feedback-msg ok';
 
-  const firstTimeThisSession = !solved;
   const alreadyCompleted = isCompleted(ch.id);
   solved = true;
 
-  // XP nur beim ersten Lösen (nicht beim Wiederholen) vergeben.
   if (!alreadyCompleted) {
+    // write-only and explain always give perfect XP (no auto-run possible)
     let gained = XP_BASE - hintsUsed * HINT_PENALTY;
-    if (hintsUsed === 0 && attempts === 1) gained += PERFECT_BONUS;
+    if ((hintsUsed === 0 && attempts === 1) || ch.type === 'explain' || ch.type === 'write-only') {
+      gained += PERFECT_BONUS;
+    }
     gained = Math.max(10, gained);
 
     state.xp += gained;
@@ -436,21 +621,16 @@ function onCorrect(ch) {
     pulseStat(els.streak.parentElement);
     updateStatsUI();
 
-    if (hintsUsed === 0 && attempts === 1) {
-      els.feedbackMsg.textContent = '✓ Perfect! +' + gained + ' XP';
-    } else {
-      els.feedbackMsg.textContent = '✓ Korrekt! +' + gained + ' XP';
-    }
+    const isP = (hintsUsed === 0 && attempts === 1) || ch.type === 'explain' || ch.type === 'write-only';
+    els.feedbackMsg.textContent = (isP ? '✓ Perfect! +' : '✓ Korrekt! +') + gained + ' XP';
+    els.feedbackMsg.className = 'feedback-msg ok';
   } else {
     els.feedbackMsg.textContent = '✓ Korrekt! (bereits abgeschlossen)';
+    els.feedbackMsg.className = 'feedback-msg ok';
   }
 
-  // Erklärung zeigen
   showExplanation(ch);
-
-  // Welt-Freischaltung prüfen
   maybeUnlockNext(ch.world);
-
   els.nextBtn.hidden = false;
   els.nextBtn.focus();
 }
@@ -458,12 +638,10 @@ function onCorrect(ch) {
 function onWrong() {
   els.outputView.classList.add('error');
   els.editor.classList.remove('shake');
-  void els.editor.offsetWidth; // reflow → Animation neu auslösen
+  void els.editor.offsetWidth;
   els.editor.classList.add('shake');
   els.feedbackMsg.textContent = '✗ Noch nicht ganz. Vergleiche Output und Erwartet.';
   els.feedbackMsg.className = 'feedback-msg bad';
-
-  // Streak bricht NICHT bei falschem Versuch (nur bei Skip) — sanftere UX.
   if (navigator.vibrate) navigator.vibrate(80);
 }
 
@@ -480,7 +658,6 @@ function showError(msg) {
 function showExplanation(ch) {
   if (!ch.explanation) return;
   els.hintArea.hidden = false;
-  // Erklärung als eigenes Element unten anhängen (nur einmal)
   let exp = els.hintArea.querySelector('.explanation');
   if (!exp) {
     exp = document.createElement('div');
@@ -491,7 +668,7 @@ function showExplanation(ch) {
 }
 
 function maybeUnlockNext(world) {
-  if (isWorldDone(world) && world < 4 && !isWorldUnlocked(world + 1)) {
+  if (isWorldDone(world) && world < MAX_WORLD && !isWorldUnlocked(world + 1)) {
     state.unlockedWorlds.push(world + 1);
     saveState();
   }
@@ -510,10 +687,8 @@ function showNextHint() {
   const item = document.createElement('div');
   item.className = 'hint-item';
   item.innerHTML = '<span class="hint-num">Hint ' + (hintsUsed + 1) + '</span>' + escapeHtml(hints[hintsUsed]);
-  // vor der Erklärung einfügen
   const exp = els.hintArea.querySelector('.explanation');
   if (exp) els.hintArea.insertBefore(item, exp); else els.hintArea.appendChild(item);
-
   hintsUsed++;
   updateHintCount(ch);
 }
@@ -521,7 +696,6 @@ function showNextHint() {
 function revealSolution() {
   if (!current) return;
   const ch = challengeAt(current.world, current.index);
-  // Lösung verbraucht alle Hints (XP-Strafe), aber blockiert XP nicht komplett.
   hintsUsed = Math.max(hintsUsed, (ch.hints || []).length);
   updateHintCount(ch);
 
@@ -536,27 +710,17 @@ function revealSolution() {
   sol.innerHTML = '<span class="hint-num">Lösung</span>So sieht eine korrekte Lösung aus:<code></code>';
   sol.querySelector('code').textContent = ch.solution;
 
-  // Lösung optional in den Editor übernehmen
   if (ch.type === 'xslt') {
     els.editor.value = wrapXsltSolution(ch.solution);
-  } else {
+  } else if (ch.type !== 'explain') {
     els.editor.value = ch.solution;
   }
 }
 
 function wrapXsltSolution(body) {
-  // Drei mögliche Formen einer XSLT-Lösung:
-  //  1) vollständiges Stylesheet  -> unverändert
-  //  2) eigene Top-Level-Templates (enthält <xsl:template / <xsl:key)
-  //     -> als Stylesheet-Körper einsetzen (ersetzt das Starter-match="/")
-  //  3) reiner Template-Körper (z. B. <p>…)  -> in match="/" einsetzen
   if (body.includes('<xsl:stylesheet')) return body;
-
-  const isTopLevel = /<xsl:template|<xsl:key|<xsl:param\s|<xsl:variable[^>]*>\s*$/m.test(body)
-    && /<xsl:template/.test(body);
-
+  const isTopLevel = /<xsl:template|<xsl:key/.test(body);
   const indent = s => s.split('\n').map(l => '  ' + l).join('\n');
-
   if (isTopLevel) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0"
@@ -569,8 +733,6 @@ ${indent(body)}
 
 </xsl:stylesheet>`;
   }
-
-  // reiner Körper -> in match="/" einsetzen
   return `<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -594,7 +756,6 @@ function goNext() {
   if (current.index + 1 < total) {
     openChallenge(current.world, current.index + 1);
   } else {
-    // Welt fertig?
     if (isWorldDone(current.world)) showWorldDone(current.world);
     else openChallenge(current.world, 0);
   }
@@ -604,8 +765,11 @@ function showWorldDone(world) {
   const next = world + 1;
   els.worldDoneTitle.textContent = WORLD_META[world].name + ' abgeschlossen!';
   let txt = 'Alle 12 Challenges gelöst. Aktueller Stand: ⚡ ' + state.xp + ' XP · 🔥 ' + state.streak + ' Streak.';
-  if (next <= 4) txt += ' Welt ' + next + ' (' + WORLD_META[next].name + ') ist jetzt freigeschaltet!';
-  else txt += ' Du hast alle vier Welten gemeistert. Viel Erfolg im Vorstellungsgespräch!';
+  if (next <= MAX_WORLD) {
+    txt += ' Welt ' + next + ' (' + WORLD_META[next].name + ') ist jetzt freigeschaltet!';
+  } else {
+    txt += ' Du hast alle fünf Welten gemeistert — viel Erfolg im Vorstellungsgespräch!';
+  }
   els.worldDoneText.textContent = txt;
   els.worldDoneOverlay.hidden = false;
 }
@@ -613,10 +777,7 @@ function showWorldDone(world) {
 // ============================================================
 //  UI-Helfer
 // ============================================================
-function updateStatsUI() {
-  els.xp.textContent = state.xp;
-  els.streak.textContent = state.streak;
-}
+function updateStatsUI() { els.xp.textContent = state.xp; els.streak.textContent = state.streak; }
 function pulseStat(el) {
   if (!el) return;
   el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
@@ -625,7 +786,7 @@ function floatXP(amount) {
   const f = document.createElement('div');
   f.className = 'xp-float';
   f.textContent = '+' + amount + ' XP';
-  const r = els.runBtn.getBoundingClientRect();
+  const r = (els.runBtn.hidden ? els.nextBtn : els.runBtn).getBoundingClientRect();
   f.style.left = (r.left + r.width / 2 - 30) + 'px';
   f.style.top = (r.top - 10) + 'px';
   els.xpFloatLayer.appendChild(f);
@@ -642,12 +803,9 @@ function arraysEqual(a, b) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
-function cleanParserError(t) {
-  return String(t).replace(/\s+/g, ' ').trim().slice(0, 300);
-}
+function cleanParserError(t) { return String(t).replace(/\s+/g, ' ').trim().slice(0, 300); }
 function humanizeError(err) {
   let m = (err && err.message) ? err.message : String(err);
-  // FontoxPath-Fehlercodes lesbarer machen
   if (/XPST0003/.test(m)) m = 'Syntaxfehler im Ausdruck (XPST0003). ' + m;
   else if (/XPST0008|XPST0017/.test(m)) m = 'Unbekannte Variable oder Funktion. ' + m;
   else if (/XPTY0004/.test(m)) m = 'Typ-/Multiplizitätsfehler (XPTY0004): Eine Funktion bekam mehr oder weniger Werte als erlaubt. Tipp: ggf. mit (…)[1] auf einen Wert reduzieren. ' + m;
@@ -655,34 +813,30 @@ function humanizeError(err) {
   return m;
 }
 
-// Sehr leichtes Pretty-Printing für HTML-Output (Lesbarkeit im Output-Panel).
 function prettyHtml(html) {
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
-  let out = '';
-  let depth = 0;
-  const INDENT = '  ';
+  let out = ''; let depth = 0; const IND = '  ';
   function walk(nodes) {
     nodes.forEach(n => {
       if (n.nodeType === Node.TEXT_NODE) {
         const t = normWs(n.textContent);
-        if (t) out += INDENT.repeat(depth) + t + '\n';
+        if (t) out += IND.repeat(depth) + t + '\n';
       } else if (n.nodeType === Node.ELEMENT_NODE) {
         const tag = n.tagName.toLowerCase();
         const attrs = Array.from(n.attributes)
           .filter(a => !a.name.startsWith('xmlns'))
           .map(a => ' ' + a.name + '="' + a.value + '"').join('');
         const kids = Array.from(n.childNodes).filter(k =>
-          k.nodeType === Node.ELEMENT_NODE ||
-          (k.nodeType === Node.TEXT_NODE && normWs(k.textContent)));
-        if (kids.length === 0) {
-          out += INDENT.repeat(depth) + '<' + tag + attrs + '></' + tag + '>\n';
+          k.nodeType === Node.ELEMENT_NODE || (k.nodeType === Node.TEXT_NODE && normWs(k.textContent)));
+        if (!kids.length) {
+          out += IND.repeat(depth) + '<' + tag + attrs + '></' + tag + '>\n';
         } else if (kids.length === 1 && kids[0].nodeType === Node.TEXT_NODE) {
-          out += INDENT.repeat(depth) + '<' + tag + attrs + '>' + normWs(kids[0].textContent) + '</' + tag + '>\n';
+          out += IND.repeat(depth) + '<' + tag + attrs + '>' + normWs(kids[0].textContent) + '</' + tag + '>\n';
         } else {
-          out += INDENT.repeat(depth) + '<' + tag + attrs + '>\n';
+          out += IND.repeat(depth) + '<' + tag + attrs + '>\n';
           depth++; walk(Array.from(n.childNodes)); depth--;
-          out += INDENT.repeat(depth) + '</' + tag + '>\n';
+          out += IND.repeat(depth) + '</' + tag + '>\n';
         }
       }
     });
@@ -705,12 +859,11 @@ function wireEvents() {
     els.worldDoneOverlay.hidden = true; showScreen('world'); renderWorldSelect();
   });
   $('resetBtn').addEventListener('click', () => {
-    if (confirm('Gesamten Fortschritt (XP, Streak, gelöste Challenges) zurücksetzen?')) {
+    if (confirm('Gesamten Fortschritt (XP, Streak, gelöste Challenges, gesehene Konzept-Karten) zurücksetzen?')) {
       state = defaultState(); saveState(); showScreen('world'); renderWorldSelect();
     }
   });
 
-  // Tab-Handling im Editor (2 Spaces)
   els.editor.addEventListener('keydown', e => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -718,19 +871,15 @@ function wireEvents() {
       els.editor.value = els.editor.value.substring(0, s) + '  ' + els.editor.value.substring(els.editor.selectionEnd);
       els.editor.selectionStart = els.editor.selectionEnd = s + 2;
     }
-    // Ctrl+Enter führt aus
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault(); runChallenge();
-    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runChallenge(); }
   });
 
-  // Globale Shortcuts
   document.addEventListener('keydown', e => {
     if (!els.challengeScreen.classList.contains('active')) return;
     const inEditor = document.activeElement === els.editor;
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runChallenge(); return; }
     if (!inEditor) {
-      if ((e.key === 'h' || e.key === 'H')) { e.preventDefault(); showNextHint(); }
+      if (e.key === 'h' || e.key === 'H') { e.preventDefault(); showNextHint(); }
       if (e.key === 'ArrowRight' && !els.nextBtn.hidden) { e.preventDefault(); goNext(); }
     }
   });
@@ -747,10 +896,10 @@ function init() {
 }
 document.addEventListener('DOMContentLoaded', init);
 
-// Debug-/Test-Hook (harmlos): erlaubt direktes Öffnen einer Challenge,
-// z. B. window.wegaLearn.open(1, 0). Nützlich für automatisierte Tests.
+// Debug-/Test-Hook
 window.wegaLearn = {
   open: openChallenge,
+  openDirect: _doOpenChallenge,  // bypasses concept card gate
   run: runChallenge,
   state: () => state,
   challenges: () => window.CHALLENGES,
