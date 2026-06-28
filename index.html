@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>wega-learn — XPath · FLWOR · XSLT · WeGA-Patterns</title>
+
+  <!-- FontoxPath: XPath 3.1 + XQuery/FLWOR.
+       Die UMD-Build von FontoxPath erwartet ihre Abhängigkeiten als globale
+       Objekte (window.whynot/prsc/xspattern). Reihenfolge ist wichtig:
+       whynot + prsc zuerst, dann xspattern (braucht whynot), dann fontoxpath. -->
+  <script src="https://unpkg.com/whynot@5.0.0/dist/whynot.umd.cjs"></script>
+  <script src="https://unpkg.com/prsc@4.0.0/dist/prsc.umd.cjs"></script>
+  <script src="https://unpkg.com/xspattern@3.1.0/dist/xspattern.umd.cjs"></script>
+  <script src="https://unpkg.com/fontoxpath@3.27.1/dist/fontoxpath.js"></script>
+  <!-- highlight.js: Syntax-Highlighting für das XML-Panel -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================ Top Bar ============================ -->
+  <header id="topbar">
+    <div class="brand" id="brandHome" title="Zur Weltauswahl">
+      <span class="brand-logo">🎯</span>
+      <div class="brand-text">
+        <span class="brand-title">wega-learn</span>
+        <span class="brand-sub">XPath · FLWOR · XSLT · WeGA-Patterns</span>
+      </div>
+    </div>
+    <div class="stats">
+      <span class="stat xp"><span class="stat-icon">⚡</span> <span id="xpValue">0</span> XP</span>
+      <span class="stat streak"><span class="stat-icon">🔥</span> <span id="streakValue">0</span> Streak</span>
+      <button id="resetBtn" class="ghost-btn" title="Fortschritt zurücksetzen">↺ Reset</button>
+    </div>
+  </header>
+
+  <!-- ====================== Screen 1: Welt-Auswahl ====================== -->
+  <main id="worldSelect" class="screen active">
+    <div class="world-grid" id="worldGrid"><!-- gefüllt durch app.js --></div>
+    <p class="hint-foot">Tipp: <kbd>Ctrl</kbd>+<kbd>↵</kbd> führt eine Challenge aus · <kbd>H</kbd> nächster Hint · <kbd>→</kbd> weiter nach Korrekt.</p>
+  </main>
+
+  <!-- ===================== Screen 2: Challenge ===================== -->
+  <main id="challengeScreen" class="screen">
+    <div class="challenge-bar">
+      <button id="backBtn" class="ghost-btn">← Zurück</button>
+      <span id="cWorldName" class="c-worldname">Welt</span>
+      <span id="cProgress" class="c-progress">0 / 12</span>
+    </div>
+
+    <section class="task-card">
+      <h2 id="cTitle"><span class="pin">📌</span> <span id="cTitleText">Titel</span></h2>
+      <p id="cTask">Aufgabe…</p>
+      <span id="cConcept" class="concept-tag"></span>
+    </section>
+
+    <section class="work-area">
+      <div class="panel xml-panel">
+        <div class="panel-head">XML-Fixture <span id="cFixtureName" class="fixture-name"></span></div>
+        <pre class="xml-pre"><code id="xmlView" class="language-xml"></code></pre>
+      </div>
+
+      <div class="panel editor-panel">
+        <div class="panel-head" id="editorLabel">Dein XPath-Ausdruck</div>
+        <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+
+        <div class="io-row">
+          <div class="io-block">
+            <div class="io-label">Output</div>
+            <pre id="outputView" class="io-box">—</pre>
+          </div>
+          <div class="io-block">
+            <div class="io-label">Erwartet</div>
+            <pre id="expectedView" class="io-box"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="action-bar">
+      <button id="hintBtn" class="ghost-btn">💡 Hint (<span id="hintCount">3</span> verfügbar)</button>
+      <button id="solutionBtn" class="ghost-btn">👁 Lösung</button>
+      <div class="spacer"></div>
+      <span id="feedbackMsg" class="feedback-msg"></span>
+      <button id="nextBtn" class="ghost-btn next-btn" hidden>Weiter →</button>
+      <button id="runBtn" class="primary-btn">▶ Ausführen <span class="kbd-inline">Ctrl+↵</span></button>
+    </div>
+
+    <div id="hintArea" class="hint-area" hidden></div>
+  </main>
+
+  <!-- Welt abgeschlossen -->
+  <div id="worldDoneOverlay" class="overlay" hidden>
+    <div class="overlay-card">
+      <div class="overlay-icon">🏆</div>
+      <h2 id="worldDoneTitle">Welt abgeschlossen!</h2>
+      <p id="worldDoneText"></p>
+      <button id="worldDoneBtn" class="primary-btn">Zur Weltauswahl</button>
+    </div>
+  </div>
+
+  <!-- XP-Float-Container -->
+  <div id="xpFloatLayer"></div>
+
+  <script src="data/tei-fixtures.js"></script>
+  <script src="challenges/challenges.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

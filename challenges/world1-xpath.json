@@ -1,0 +1,230 @@
+[
+  {
+    "id": "w1c01",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Personen im Brief",
+    "task": "Selektiere alle tei:persName-Elemente in diesem Brief und gib ihren Textinhalt aus.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Carl Maria von Weber", "Caroline Brandt", "Lina", "Friedrich Kind", "Brühl", "Carl"],
+    "hints": [
+      "TEI-Elemente stehen im Namespace tei:. Der Präfix muss immer mit angegeben werden.",
+      "Der // Operator sucht rekursiv durch den ganzen Baum — du musst nicht den vollen Pfad kennen.",
+      "string() oder text() gibt den Textinhalt zurück: //tei:persName/string()"
+    ],
+    "solution": "//tei:persName/string()",
+    "explanation": "// ist die Kurzschreibweise für /descendant-or-self::node()/. In der WeGA werden Personenreferenzen immer über tei:persName mit @key kodiert — dieses Pattern findest du überall in den Brief-Stylesheets.",
+    "conceptTag": "Grundnavigation"
+  },
+  {
+    "id": "w1c02",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Datum des Briefes",
+    "task": "Gib das @when-Attribut des Versanddatums aus (correspAction[@type='sent']).",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["1817-02-12"],
+    "hints": [
+      "Versandaktionen stehen in tei:correspAction[@type='sent'].",
+      "Attribute selektierst du mit @: tei:date/@when.",
+      "//tei:correspAction[@type='sent']/tei:date/@when"
+    ],
+    "solution": "//tei:correspAction[@type='sent']/tei:date/@when",
+    "explanation": "@when liefert das normierte ISO-Datum. correspDesc/correspAction ist das zentrale WeGA-Pattern für Korrespondenz-Metadaten — sent und received unterscheiden Absender und Empfänger.",
+    "conceptTag": "Grundnavigation"
+  },
+  {
+    "id": "w1c03",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Absender",
+    "task": "Gib den Namen des Absenders aus (persName innerhalb der sent-Aktion).",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Carl Maria von Weber"],
+    "hints": [
+      "Der Absender steckt in correspAction[@type='sent'].",
+      "Du kannst // auch mitten im Pfad verwenden, um beliebig tief zu suchen.",
+      "//tei:correspAction[@type='sent']//tei:persName/string()"
+    ],
+    "solution": "//tei:correspAction[@type='sent']//tei:persName/string()",
+    "explanation": "Das // mitten im Ausdruck bedeutet 'irgendwo darunter'. So musst du die genaue Schachtelung nicht kennen.",
+    "conceptTag": "Grundnavigation"
+  },
+  {
+    "id": "w1c04",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Alle @key-Attribute",
+    "task": "Selektiere alle @key-Attribute aller tei:persName-Elemente.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["A002068", "A002078", "A002078", "A002099", "A002101", "A002068"],
+    "hints": [
+      "@key ist ein Attribut auf tei:persName.",
+      "Attribute werden auch als Knoten ausgewählt: //tei:persName/@key.",
+      "//tei:persName/@key"
+    ],
+    "solution": "//tei:persName/@key",
+    "explanation": "@key referenziert den eindeutigen WeGA-Datensatz einer Person (Pattern A00xxxx). Dieselbe Person kann mehrfach vorkommen — daher tauchen Keys mehrfach auf.",
+    "conceptTag": "Grundnavigation"
+  },
+  {
+    "id": "w1c05",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Kommentar-Notizen",
+    "task": "Selektiere alle tei:note mit @type='commentary' und gib ihren Text aus.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Weber arbeitete von 1815 bis 1819 an mehreren Klavierwerken parallel."],
+    "hints": [
+      "Ein Predicate [ ] filtert nach einer Bedingung.",
+      "Vergleiche das Attribut: [@type='commentary'].",
+      "//tei:note[@type='commentary']/string()"
+    ],
+    "solution": "//tei:note[@type='commentary']/string()",
+    "explanation": "In der WeGA unterscheidet @type auf tei:note redaktionelle Ebenen: commentary (Sachkommentar) vs. textConst (Textkonstitution). Predicates [ ] filtern Knoten nach Bedingungen.",
+    "conceptTag": "Predicates"
+  },
+  {
+    "id": "w1c06",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Erster Absatz",
+    "task": "Gib den Text des ersten tei:p im body aus.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Meine innig geliebte Lina! Schon wieder sind einige Tage vergangen, ohne dass ich Dir schreiben konnte. Die Proben zur Freischütz-Ouvertüre nehmen all meine Zeit in Anspruch."],
+    "hints": [
+      "Mit [1] greifst du das erste Element einer Sequenz.",
+      "Achtung: //tei:p[1] heißt 'jedes p, das erstes Kind ist'. Du willst das erste aller p.",
+      "Klammere die Sequenz zuerst: (//tei:body//tei:p)[1]/string()"
+    ],
+    "solution": "(//tei:body//tei:p)[1]/string()",
+    "explanation": "Der Unterschied zwischen //tei:p[1] und (//tei:p)[1] ist eine klassische Stolperfalle: Ersteres filtert pro Eltern-Kontext, Letzteres nummeriert die gesamte Ergebnismenge.",
+    "conceptTag": "Predicates"
+  },
+  {
+    "id": "w1c07",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Werkverweise",
+    "task": "Selektiere alle tei:rs[@type='work'] und gib ihren Text aus.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Freischütz", "Aufforderung zum Tanz"],
+    "hints": [
+      "tei:rs ist eine referenzierende Zeichenkette (referencing string).",
+      "Filtere nach @type='work'.",
+      "//tei:rs[@type='work']/string()"
+    ],
+    "solution": "//tei:rs[@type='work']/string()",
+    "explanation": "tei:rs[@type='work'] markiert Werkverweise im Fließtext. In der WeGA verlinken diese über @key auf Werk-Datensätze.",
+    "conceptTag": "Predicates"
+  },
+  {
+    "id": "w1c08",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Nur Personen mit Key",
+    "task": "Selektiere nur die tei:persName, die ein @key-Attribut besitzen, und gib ihren Text aus.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Carl Maria von Weber", "Caroline Brandt", "Lina", "Friedrich Kind", "Brühl", "Carl"],
+    "hints": [
+      "Ein Predicate kann auch nur die Existenz eines Attributs prüfen.",
+      "[@key] ohne Vergleich ist wahr, wenn das Attribut vorhanden ist.",
+      "//tei:persName[@key]/string()"
+    ],
+    "solution": "//tei:persName[@key]/string()",
+    "explanation": "Ein nacktes [@key] testet auf Existenz. In echten WeGA-Daten gibt es auch persName ohne @key (nicht identifizierte Personen) — dieses Pattern filtert die identifizierten heraus.",
+    "conceptTag": "Predicates"
+  },
+  {
+    "id": "w1c09",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Folgegeschwister des Datums",
+    "task": "Gib die local-name() aller Folgegeschwister-Elemente von tei:date aus.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["placeName"],
+    "hints": [
+      "Die Achse following-sibling:: liefert alle nachfolgenden Geschwister.",
+      "local-name() gibt den Elementnamen ohne Namespace-Präfix.",
+      "//tei:date/following-sibling::*/local-name()"
+    ],
+    "solution": "//tei:date/following-sibling::*/local-name()",
+    "explanation": "Achsen (axes) wie following-sibling::, preceding::, ancestor:: navigieren relativ zum Kontextknoten. local-name() ist nützlich, wenn man Namespace-Präfixe ignorieren will.",
+    "conceptTag": "Achsen und Funktionen"
+  },
+  {
+    "id": "w1c10",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Anzahl der Personen",
+    "task": "Zähle alle tei:persName-Elemente im Dokument.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "number",
+    "expected": 6,
+    "hints": [
+      "count() nimmt eine Sequenz und gibt deren Länge zurück.",
+      "count( hier die Sequenz )",
+      "count(//tei:persName)"
+    ],
+    "solution": "count(//tei:persName)",
+    "explanation": "count() ist eine Aggregatfunktion. Sie zählt Knoten, nicht Zeichen — perfekt für 'Wie oft kommt X vor?'.",
+    "conceptTag": "Achsen und Funktionen"
+  },
+  {
+    "id": "w1c11",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Normalisierter Text",
+    "task": "Gib den normalisierten Text des ersten tei:persName aus (überflüssige Leerzeichen entfernt).",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Carl Maria von Weber"],
+    "hints": [
+      "normalize-space() entfernt führende/folgende Leerzeichen und kollabiert mehrfache.",
+      "Achtung: normalize-space() erwartet genau einen Wert. //tei:persName[1] kann mehrere liefern!",
+      "Klammere zuerst: normalize-space((//tei:persName)[1])"
+    ],
+    "solution": "normalize-space((//tei:persName)[1])",
+    "explanation": "normalize-space() akzeptiert nur einen einzelnen String. Deshalb muss (//tei:persName)[1] erst die Sequenz auf genau einen Knoten reduzieren, sonst gibt es einen XPTY0004-Fehler.",
+    "conceptTag": "Achsen und Funktionen"
+  },
+  {
+    "id": "w1c12",
+    "world": 1,
+    "worldName": "XPath Navigator",
+    "title": "Distinkte note-Typen",
+    "task": "Gib alle unterschiedlichen @type-Werte der tei:note-Elemente aus.",
+    "type": "xpath",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["commentary", "textConst"],
+    "hints": [
+      "distinct-values() entfernt Duplikate aus einer Sequenz.",
+      "Sammle erst alle @type, dann distinct.",
+      "distinct-values(//tei:note/@type)"
+    ],
+    "solution": "distinct-values(//tei:note/@type)",
+    "explanation": "distinct-values() ist eine XPath-2.0/3.1-Funktion (im Browser-XSLT 1.0 nicht verfügbar!). FontoxPath unterstützt sie. Sehr nützlich, um z. B. alle vorkommenden Typ-Werte zu inventarisieren.",
+    "conceptTag": "Achsen und Funktionen"
+  }
+]

@@ -72,6 +72,19 @@ wega-learn/
     └── tei-fixtures.js # TEI-XML als JS-Strings (kein CORS-Problem)
 ```
 
+## Build / Run
+
+- Kein Build-Step nötig: `index.html` direkt im Browser öffnen (auch via `file://`).
+- `challenges/challenges.js` ist eine generierte Bündelung der `world*.json` (damit es ohne Server/CORS lädt). Quelle der Wahrheit bleiben die JSON-Dateien. Nach Änderungen an den JSONs neu erzeugen: `node build-challenges.mjs`.
+
+## FontoxPath-Ladereihenfolge (wichtig!)
+
+Die UMD-Build von FontoxPath erwartet ihre Abhängigkeiten als globale `window`-Objekte. Reihenfolge der `<script>`-Tags in `index.html` muss sein: `whynot` → `prsc` → `xspattern` (braucht whynot) → `fontoxpath`. Lädt man nur fontoxpath (wie im naiven CDN-Snippet), bleibt `window.fontoxpath` undefined und es kommt zu „Cannot read properties of undefined".
+
+## Tests
+
+End-to-End mit Playwright (Chromium) gegen die echten Engines: alle 48 Challenges werden mit ihren `solution`-Feldern gelöst und müssen „Korrekt" liefern; XPath/FLWOR via FontoxPath, XSLT via Browser-`XSLTProcessor`. XSLT-Output wird DOM-strukturell verglichen (whitespace-tolerant, ignoriert `xmlns`-Deklarationen, toleriert auto-`tbody`).
+
 ## Fork-Workflow
 
 Remote: `origin` = komisla/wega-learn (eigenes Repo, kein Fork)

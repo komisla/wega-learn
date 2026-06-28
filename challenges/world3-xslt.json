@@ -1,0 +1,230 @@
+[
+  {
+    "id": "w3c01",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Absender ausgeben",
+    "task": "Gib den Namen des Absenders in einem <p>-Element aus.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<p>Carl Maria von Weber</p>",
+    "hints": [
+      "xsl:value-of select=\"...\" gibt den Stringwert eines Knotens aus.",
+      "Der Absender steckt in tei:correspAction[@type='sent']//tei:persName.",
+      "<p><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></p>"
+    ],
+    "solution": "<p><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></p>",
+    "explanation": "xsl:value-of ist die Brot-und-Butter-Anweisung in XSLT: sie nimmt den Stringwert eines XPath-Ausdrucks und schreibt ihn in die Ausgabe.",
+    "conceptTag": "value-of"
+  },
+  {
+    "id": "w3c02",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Datum mit Attribut",
+    "task": "Gib das Datum als <time datetime=\"ISO\">Anzeigetext</time> aus. Das @when als datetime-Attribut, der Elementtext als Anzeige.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<time datetime=\"1817-02-12\">12. Februar 1817</time>",
+    "hints": [
+      "Mit geschweiften Klammern {…} setzt du XPath-Werte in Attribute (Attribute Value Template).",
+      "datetime=\"{...}\" wertet den XPath darin aus.",
+      "<time datetime=\"{//tei:correspAction[@type='sent']/tei:date/@when}\"><xsl:value-of select=\"//tei:correspAction[@type='sent']/tei:date\"/></time>"
+    ],
+    "solution": "<time datetime=\"{//tei:correspAction[@type='sent']/tei:date/@when}\"><xsl:value-of select=\"//tei:correspAction[@type='sent']/tei:date\"/></time>",
+    "explanation": "Attribute Value Templates ({…}) sind die kompakte Art, dynamische Attributwerte zu erzeugen. Alternativ geht xsl:attribute (siehe spätere Challenge).",
+    "conceptTag": "Attribute Value Template"
+  },
+  {
+    "id": "w3c03",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Von/An als Definitionsliste",
+    "task": "Erzeuge eine <dl> mit <dt>Von:</dt><dd>Absender</dd><dt>An:</dt><dd>Empfänger</dd>.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<dl><dt>Von:</dt><dd>Carl Maria von Weber</dd><dt>An:</dt><dd>Caroline Brandt</dd></dl>",
+    "hints": [
+      "dt = Term, dd = Beschreibung.",
+      "Empfänger steht in correspAction[@type='received'].",
+      "<dl><dt>Von:</dt><dd><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></dd><dt>An:</dt><dd><xsl:value-of select=\"//tei:correspAction[@type='received']//tei:persName\"/></dd></dl>"
+    ],
+    "solution": "<dl><dt>Von:</dt><dd><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></dd><dt>An:</dt><dd><xsl:value-of select=\"//tei:correspAction[@type='received']//tei:persName\"/></dd></dl>",
+    "explanation": "Statischer HTML-Text und xsl:value-of lassen sich frei mischen. So baut man strukturiertes Markup um dynamische Werte herum.",
+    "conceptTag": "value-of"
+  },
+  {
+    "id": "w3c04",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Alle Personen als Liste",
+    "task": "Erzeuge eine <ul> mit einem <li> pro tei:persName, via xsl:for-each.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<ul><li>Carl Maria von Weber</li><li>Caroline Brandt</li><li>Lina</li><li>Friedrich Kind</li><li>Brühl</li><li>Carl</li></ul>",
+    "hints": [
+      "xsl:for-each iteriert über eine Knotenmenge.",
+      "Innerhalb gibt . den aktuellen Knoten an.",
+      "<ul><xsl:for-each select=\"//tei:persName\"><li><xsl:value-of select=\".\"/></li></xsl:for-each></ul>"
+    ],
+    "solution": "<ul><xsl:for-each select=\"//tei:persName\"><li><xsl:value-of select=\".\"/></li></xsl:for-each></ul>",
+    "explanation": "xsl:for-each ist die explizite Schleife (pull-style). In World 4 lernst du die WeGA-bevorzugte Alternative kennen: apply-templates (push-style).",
+    "conceptTag": "for-each"
+  },
+  {
+    "id": "w3c05",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Tabelle aus der Sammlung",
+    "task": "Erzeuge eine <table> mit einer Zeile pro Brief (Absender + Datum) aus letters_collection.",
+    "type": "xslt",
+    "fixture": "letters_collection",
+    "expectedType": "html",
+    "expected": "<table><tr><td>Carl Maria von Weber</td><td>1817-03-01</td></tr><tr><td>Caroline Brandt</td><td>1817-03-05</td></tr><tr><td>Friedrich Kind</td><td>1817-02-28</td></tr><tr><td>Carl Maria von Weber</td><td>1817-04-10</td></tr><tr><td>Caroline Brandt</td><td>1817-04-15</td></tr></table>",
+    "hints": [
+      "Iteriere über //tei:letter.",
+      "Innerhalb navigierst du relativ: tei:correspAction[@type='sent']/tei:persName.",
+      "<table><xsl:for-each select=\"//tei:letter\"><tr><td><xsl:value-of select=\"tei:correspAction[@type='sent']/tei:persName\"/></td><td><xsl:value-of select=\"tei:correspAction[@type='sent']/tei:date/@when\"/></td></tr></xsl:for-each></table>"
+    ],
+    "solution": "<table><xsl:for-each select=\"//tei:letter\"><tr><td><xsl:value-of select=\"tei:correspAction[@type='sent']/tei:persName\"/></td><td><xsl:value-of select=\"tei:correspAction[@type='sent']/tei:date/@when\"/></td></tr></xsl:for-each></table>",
+    "explanation": "Innerhalb von xsl:for-each ist der Kontextknoten der jeweilige Brief — daher navigiert man relativ (ohne führendes //). Der Browser ergänzt beim table-Output automatisch ein tbody.",
+    "conceptTag": "for-each"
+  },
+  {
+    "id": "w3c06",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Sortierte Liste",
+    "task": "Erzeuge eine <ul> aller tei:persName, alphabetisch sortiert (xsl:sort).",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<ul><li>Brühl</li><li>Carl</li><li>Carl Maria von Weber</li><li>Caroline Brandt</li><li>Friedrich Kind</li><li>Lina</li></ul>",
+    "hints": [
+      "xsl:sort steht als erstes Kind innerhalb von xsl:for-each.",
+      "<xsl:sort select=\".\"/> sortiert nach dem Knotentext.",
+      "<ul><xsl:for-each select=\"//tei:persName\"><xsl:sort select=\".\"/><li><xsl:value-of select=\".\"/></li></xsl:for-each></ul>"
+    ],
+    "solution": "<ul><xsl:for-each select=\"//tei:persName\"><xsl:sort select=\".\"/><li><xsl:value-of select=\".\"/></li></xsl:for-each></ul>",
+    "explanation": "xsl:sort muss direkt nach dem öffnenden for-each (oder apply-templates) stehen, vor dem Schleifenkörper. Standard ist aufsteigend alphabetisch.",
+    "conceptTag": "sort"
+  },
+  {
+    "id": "w3c07",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "xsl:if — nur Kommentare",
+    "task": "Iteriere über alle tei:note und gib nur die commentary-Notizen in einem <p> aus (xsl:if).",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<div><p>Weber arbeitete von 1815 bis 1819 an mehreren Klavierwerken parallel.</p></div>",
+    "hints": [
+      "xsl:if test=\"...\" gibt seinen Inhalt nur aus, wenn die Bedingung wahr ist.",
+      "XSLT 1.0 hat kein else — dafür gibt es xsl:choose.",
+      "<div><xsl:for-each select=\"//tei:note\"><xsl:if test=\"@type='commentary'\"><p><xsl:value-of select=\".\"/></p></xsl:if></xsl:for-each></div>"
+    ],
+    "solution": "<div><xsl:for-each select=\"//tei:note\"><xsl:if test=\"@type='commentary'\"><p><xsl:value-of select=\".\"/></p></xsl:if></xsl:for-each></div>",
+    "explanation": "xsl:if kennt kein else (das gibt es erst mit xsl:choose). Für reine 'nur wenn'-Logik ist xsl:if die einfachste Wahl.",
+    "conceptTag": "if"
+  },
+  {
+    "id": "w3c08",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "xsl:choose — Klassen nach Typ",
+    "task": "Gib für jede tei:note ein <span> mit class='comment' (bei commentary) oder 'other' (sonst) und dem @type als Text aus.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<div><span class=\"comment\">commentary</span><span class=\"other\">textConst</span></div>",
+    "hints": [
+      "xsl:choose mit xsl:when und xsl:otherwise ist das if/else if/else von XSLT.",
+      "Setze die Klasse über xsl:attribute oder ein AVT.",
+      "<div><xsl:for-each select=\"//tei:note\"><span><xsl:attribute name=\"class\"><xsl:choose><xsl:when test=\"@type='commentary'\">comment</xsl:when><xsl:otherwise>other</xsl:otherwise></xsl:choose></xsl:attribute><xsl:value-of select=\"@type\"/></span></xsl:for-each></div>"
+    ],
+    "solution": "<div><xsl:for-each select=\"//tei:note\"><span><xsl:attribute name=\"class\"><xsl:choose><xsl:when test=\"@type='commentary'\">comment</xsl:when><xsl:otherwise>other</xsl:otherwise></xsl:choose></xsl:attribute><xsl:value-of select=\"@type\"/></span></xsl:for-each></div>",
+    "explanation": "xsl:choose/when/otherwise deckt mehrstufige Fallunterscheidungen ab. Hier steuert es den Wert eines Attributs, das mit xsl:attribute gesetzt wird.",
+    "conceptTag": "choose"
+  },
+  {
+    "id": "w3c09",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Bedingtes Attribut",
+    "task": "Erzeuge eine <ul> aller tei:persName. Wenn @key existiert, setze ein data-key-Attribut mit dessen Wert.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<ul><li data-key=\"A002068\">Carl Maria von Weber</li><li data-key=\"A002078\">Caroline Brandt</li><li data-key=\"A002078\">Lina</li><li data-key=\"A002099\">Friedrich Kind</li><li data-key=\"A002101\">Brühl</li><li data-key=\"A002068\">Carl</li></ul>",
+    "hints": [
+      "xsl:attribute innerhalb eines xsl:if setzt das Attribut nur bedingt.",
+      "xsl:attribute muss vor jeglichem Textinhalt des li stehen.",
+      "<ul><xsl:for-each select=\"//tei:persName\"><li><xsl:if test=\"@key\"><xsl:attribute name=\"data-key\"><xsl:value-of select=\"@key\"/></xsl:attribute></xsl:if><xsl:value-of select=\".\"/></li></xsl:for-each></ul>"
+    ],
+    "solution": "<ul><xsl:for-each select=\"//tei:persName\"><li><xsl:if test=\"@key\"><xsl:attribute name=\"data-key\"><xsl:value-of select=\"@key\"/></xsl:attribute></xsl:if><xsl:value-of select=\".\"/></li></xsl:for-each></ul>",
+    "explanation": "Wichtig: xsl:attribute muss VOR jeglichem Kindinhalt stehen, sonst ignoriert der Prozessor es (Attribute kommen vor Text). xsl:if macht das Attribut optional.",
+    "conceptTag": "attribute"
+  },
+  {
+    "id": "w3c10",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Link aus @key erzeugen",
+    "task": "Erzeuge für jede tei:persName[@key] einen Link <a href=\"/person/KEY\">Name</a> in einer <ul>.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<ul><li><a href=\"/person/A002068\">Carl Maria von Weber</a></li><li><a href=\"/person/A002078\">Caroline Brandt</a></li><li><a href=\"/person/A002078\">Lina</a></li><li><a href=\"/person/A002099\">Friedrich Kind</a></li><li><a href=\"/person/A002101\">Brühl</a></li><li><a href=\"/person/A002068\">Carl</a></li></ul>",
+    "hints": [
+      "Mit xsl:attribute name=\"href\" baust du das href dynamisch.",
+      "concat('/person/', @key) setzt den Pfad zusammen.",
+      "<ul><xsl:for-each select=\"//tei:persName[@key]\"><li><a><xsl:attribute name=\"href\"><xsl:value-of select=\"concat('/person/', @key)\"/></xsl:attribute><xsl:value-of select=\".\"/></a></li></xsl:for-each></ul>"
+    ],
+    "solution": "<ul><xsl:for-each select=\"//tei:persName[@key]\"><li><a><xsl:attribute name=\"href\"><xsl:value-of select=\"concat('/person/', @key)\"/></xsl:attribute><xsl:value-of select=\".\"/></a></li></xsl:for-each></ul>",
+    "explanation": "So baut die WeGA Personenlinks: aus dem @key wird eine URL zur Personen-Detailseite. Du könntest auch href=\"/person/{@key}\" als AVT schreiben — beides ist gültig.",
+    "conceptTag": "attribute"
+  },
+  {
+    "id": "w3c11",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "xsl:variable nutzen",
+    "task": "Binde den Absender an eine Variable $sender und gib 'Absender: NAME' in einem <p> aus.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<p>Absender: Carl Maria von Weber</p>",
+    "hints": [
+      "xsl:variable name=\"x\" select=\"...\" bindet einen Wert.",
+      "Auf die Variable greifst du mit $x zu.",
+      "<xsl:variable name=\"sender\" select=\"//tei:correspAction[@type='sent']//tei:persName\"/><p>Absender: <xsl:value-of select=\"$sender\"/></p>"
+    ],
+    "solution": "<xsl:variable name=\"sender\" select=\"//tei:correspAction[@type='sent']//tei:persName\"/><p>Absender: <xsl:value-of select=\"$sender\"/></p>",
+    "explanation": "xsl:variable verbessert Lesbarkeit und vermeidet Wiederholung langer XPath-Pfade. Achtung: XSLT-Variablen sind unveränderlich (kein Neuzuweisen).",
+    "conceptTag": "variable"
+  },
+  {
+    "id": "w3c12",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "xsl:element dynamisch",
+    "task": "Erzeuge mit xsl:element ein <section>-Element, das den Absendernamen enthält.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "expectedType": "html",
+    "expected": "<section>Carl Maria von Weber</section>",
+    "hints": [
+      "xsl:element name=\"...\" erzeugt ein Element, dessen Name zur Laufzeit bestimmt werden kann.",
+      "Der Inhalt steht zwischen <xsl:element> und </xsl:element>.",
+      "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>"
+    ],
+    "solution": "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>",
+    "explanation": "xsl:element ist nötig, wenn der Elementname dynamisch ist (z. B. aus einem Attribut käme: name=\"{@type}\"). Bei festem Namen genügt normales Literal-Markup.",
+    "conceptTag": "element"
+  }
+]
