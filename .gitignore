@@ -1,0 +1,4 @@
+.claude/
+infra-ref/
+*.local
+.DS_Store
