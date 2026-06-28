@@ -13,6 +13,10 @@
   <script src="https://unpkg.com/prsc@4.0.0/dist/prsc.umd.cjs"></script>
   <script src="https://unpkg.com/xspattern@3.1.0/dist/xspattern.umd.cjs"></script>
   <script src="https://unpkg.com/fontoxpath@3.27.1/dist/fontoxpath.js"></script>
+
+  <!-- SaxonJS 2 (HE) — XSLT 2.0/3.0 im Browser -->
+  <script src="https://www.saxonica.com/saxon-js/2.6/SaxonJS2.rt.js"></script>
+
   <!-- highlight.js: Syntax-Highlighting für das XML-Panel -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -34,12 +38,19 @@
     <div class="stats">
       <span class="stat xp"><span class="stat-icon">⚡</span> <span id="xpValue">0</span> XP</span>
       <span class="stat streak"><span class="stat-icon">🔥</span> <span id="streakValue">0</span> Streak</span>
+      <!-- Combo display (hidden by default) -->
+      <span class="stat combo" id="comboDisplay" hidden><span id="comboText">2× 🔥</span></span>
+      <button id="achievementBtn" class="ghost-btn" title="Achievements">🏆</button>
       <button id="resetBtn" class="ghost-btn" title="Fortschritt zurücksetzen">↺ Reset</button>
     </div>
   </header>
 
   <!-- ====================== Screen 1: Welt-Auswahl ====================== -->
   <main id="worldSelect" class="screen active">
+    <div id="reviewBanner" class="review-banner" hidden>
+      <span id="reviewBannerText">🔄 Review — 0 offen</span>
+      <button id="reviewBtn" class="primary-btn review-start-btn">Review starten</button>
+    </div>
     <div class="world-grid" id="worldGrid"><!-- gefüllt durch app.js --></div>
     <p class="hint-foot">Tipp: <kbd>Ctrl</kbd>+<kbd>↵</kbd> führt eine Challenge aus · <kbd>H</kbd> nächster Hint · <kbd>→</kbd> weiter nach Korrekt.</p>
   </main>
@@ -84,6 +95,7 @@
     <div class="action-bar">
       <button id="hintBtn" class="ghost-btn">💡 Hint (<span id="hintCount">3</span> verfügbar)</button>
       <button id="solutionBtn" class="ghost-btn">👁 Lösung</button>
+      <button id="llmPromptBtn" class="ghost-btn llm-prompt-btn" hidden>📝 Lernprompt kopieren</button>
       <div class="spacer"></div>
       <span id="feedbackMsg" class="feedback-msg"></span>
       <button id="nextBtn" class="ghost-btn next-btn" hidden>Weiter →</button>
@@ -100,6 +112,27 @@
       <h2 id="worldDoneTitle">Welt abgeschlossen!</h2>
       <p id="worldDoneText"></p>
       <button id="worldDoneBtn" class="primary-btn">Zur Weltauswahl</button>
+    </div>
+  </div>
+
+  <!-- Achievement-Unlock Overlay -->
+  <div id="achievementOverlay" class="overlay achievement-unlock-overlay" hidden>
+    <div class="overlay-card achievement-unlock-card">
+      <div id="achievementUnlockIcon" class="achievement-unlock-icon">⭐</div>
+      <div class="achievement-unlock-label">Achievement freigeschaltet!</div>
+      <div id="achievementUnlockName" class="achievement-unlock-name"></div>
+      <div id="achievementUnlockDesc" class="achievement-unlock-desc"></div>
+    </div>
+  </div>
+
+  <!-- Achievement-Galerie Modal -->
+  <div id="achievementModal" class="overlay" hidden>
+    <div class="overlay-card achievement-modal-card">
+      <div class="achievement-modal-header">
+        <h2>🏆 Achievements</h2>
+        <button id="achievementModalClose" class="ghost-btn">✕</button>
+      </div>
+      <div id="achievementGrid" class="achievement-grid"><!-- filled by app.js --></div>
     </div>
   </div>
 

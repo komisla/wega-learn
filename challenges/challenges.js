@@ -1009,6 +1009,120 @@ window.CHALLENGES = {
       "solution": "<xsl:template match=\"/\"><article><xsl:apply-templates select=\"//tei:body//tei:p\"/></article></xsl:template>\n<xsl:template match=\"tei:p\"><p><xsl:apply-templates/></p></xsl:template>\n<xsl:template match=\"tei:persName\"><a href=\"{concat('/person/', @key)}\"><xsl:value-of select=\".\"/></a></xsl:template>\n<xsl:template match=\"tei:note\"><span class=\"footnote\"><xsl:value-of select=\".\"/></span></xsl:template>\n<xsl:template match=\"tei:choice\"><xsl:value-of select=\"tei:corr\"/></xsl:template>\n<xsl:template match=\"tei:del\"/>\n<xsl:template match=\"tei:rs\"><em><xsl:value-of select=\".\"/></em></xsl:template>\n<xsl:template match=\"tei:add\"><xsl:apply-templates/></xsl:template>",
       "explanation": "Das ist die WeGA-Realität: ein push-style Stylesheet mit einem Template pro TEI-Element. Der Prozessor läuft rekursiv durch den Baum, jedes Element wird nach seiner Rolle gerendert (persName→Link, rs→Werktitel, note→Fußnote). Genau so ist wega-letters.xsl aufgebaut.",
       "conceptTag": "Integration"
+    },
+    {
+      "id": "w4c13",
+      "world": 4,
+      "worldName": "WeGA Patterns",
+      "title": "xsl:function schreiben",
+      "task": "Schreibe eine XSLT-2.0-Funktion local:format-person($p as element()) as xs:string die normalize-space($p) zurückgibt. Rufe sie für die erste tei:persName auf und gib das Ergebnis in <p> aus.",
+      "type": "xslt2",
+      "fixture": "letter_001",
+      "expectedType": "html",
+      "expected": "<p>Carl Maria von Weber</p>",
+      "hints": [
+        "xsl:function name=\"local:format-person\" as=\"xs:string\" mit xsl:param name=\"p\" as=\"element()\".",
+        "Im Funktionskörper: <xsl:sequence select=\"normalize-space($p)\"/>",
+        "<xsl:function name=\"local:format-person\" as=\"xs:string\"><xsl:param name=\"p\" as=\"element()\"/><xsl:sequence select=\"normalize-space($p)\"/></xsl:function>\n<xsl:template match=\"/\"><p><xsl:value-of select=\"local:format-person((//tei:persName)[1])\"/></p></xsl:template>"
+      ],
+      "solution": "<xsl:function name=\"local:format-person\" as=\"xs:string\">\n  <xsl:param name=\"p\" as=\"element()\"/>\n  <xsl:sequence select=\"normalize-space($p)\"/>\n</xsl:function>\n<xsl:template match=\"/\">\n  <p><xsl:value-of select=\"local:format-person((//tei:persName)[1])\"/></p>\n</xsl:template>",
+      "explanation": "xsl:function ist eine echte XSLT-2.0-Funktion — aufrufbar per local:name(args) im XPath. Kein xsl:call-template mehr nötig. as=\"xs:string\" macht den Rückgabetyp explizit. Saxon erzwingt das Typing zur Laufzeit.",
+      "conceptTag": "XSLT 2.0"
+    },
+    {
+      "id": "w4c14",
+      "world": 4,
+      "worldName": "WeGA Patterns",
+      "title": "xsl:for-each-group — Notizen gruppieren",
+      "task": "Gruppiere alle tei:note nach @type. Erzeuge pro Gruppe ein <section class=\"[type]\"> mit einem <h3>[type]</h3> und einer <ul> mit je einem <li> pro Notiz.",
+      "type": "xslt2",
+      "fixture": "letter_001",
+      "expectedType": "html",
+      "expected": "<div><section class=\"commentary\"><h3>commentary</h3><ul><li>Weber arbeitete von 1815 bis 1819 an mehreren Klavierwerken parallel.</li></ul></section><section class=\"textConst\"><h3>textConst</h3><ul><li>Die Unterschrift ist im Original stark verblasst.</li></ul></section></div>",
+      "hints": [
+        "xsl:for-each-group select=\"//tei:note\" group-by=\"@type\" — der Kontextknoten ist jeweils die erste Notiz der Gruppe.",
+        "current-group() liefert alle Elemente der aktuellen Gruppe; current-grouping-key() den Schlüssel.",
+        "<xsl:template match=\"/\"><div><xsl:for-each-group select=\"//tei:note\" group-by=\"@type\"><section class=\"{current-grouping-key()}\"><h3><xsl:value-of select=\"current-grouping-key()\"/></h3><ul><xsl:for-each select=\"current-group()\"><li><xsl:value-of select=\"normalize-space(.)\"/></li></xsl:for-each></ul></section></xsl:for-each-group></div></xsl:template>"
+      ],
+      "solution": "<xsl:template match=\"/\">\n  <div>\n    <xsl:for-each-group select=\"//tei:note\" group-by=\"@type\">\n      <section class=\"{current-grouping-key()}\">\n        <h3><xsl:value-of select=\"current-grouping-key()\"/></h3>\n        <ul>\n          <xsl:for-each select=\"current-group()\">\n            <li><xsl:value-of select=\"normalize-space(.)\"/></li>\n          </xsl:for-each>\n        </ul>\n      </section>\n    </xsl:for-each-group>\n  </div>\n</xsl:template>",
+      "explanation": "xsl:for-each-group ersetzt den Muenchian-Grouping-Trick aus XSLT 1.0 (xsl:key + Knutselei). group-by=\"@type\" bündelt direkt nach Attributwert. current-group() / current-grouping-key() liefern Gruppe und Schlüssel — viel lesbarer.",
+      "conceptTag": "XSLT 2.0"
+    },
+    {
+      "id": "w4c15",
+      "world": 4,
+      "worldName": "WeGA Patterns",
+      "title": "matches() und replace() — Datum umformatieren",
+      "task": "Das Versanddatum liegt als @when='1817-02-12' vor. Wandle es mit replace() in '12.02.1817' um und gib es in <time datetime=\"1817-02-12\">12.02.1817</time> aus.",
+      "type": "xslt2",
+      "fixture": "letter_001",
+      "expectedType": "html",
+      "expected": "<time datetime=\"1817-02-12\">12.02.1817</time>",
+      "hints": [
+        "replace(string, regex, ersatz) — Backreferences $1 $2 $3 für Gruppen.",
+        "Das ISO-Datum hat das Muster (\\d{4})-(\\d{2})-(\\d{2}) — drei Gruppen.",
+        "<xsl:variable name=\"d\" select=\"//tei:correspAction[@type='sent']/tei:date/@when\"/><time datetime=\"{$d}\"><xsl:value-of select=\"replace($d,'(\\d{{4}})-(\\d{{2}})-(\\d{{2}})','$3.$2.$1')\"/></time>"
+      ],
+      "solution": "<xsl:variable name=\"d\" select=\"//tei:correspAction[@type='sent']/tei:date/@when\"/>\n<time datetime=\"{$d}\">\n  <xsl:value-of select=\"replace($d,'(\\d{4})-(\\d{2})-(\\d{2})','$3.$2.$1')\"/>\n</time>",
+      "explanation": "XSLT 2.0 hat echte reguläre Ausdrücke: matches(), replace(), tokenize(). Das ersetzt das umständliche substring-before/after-Gefummel aus 1.0. Backreferences ($1, $2, …) erlauben Gruppen umzuordnen — hier Jahr-Monat-Tag → Tag-Monat-Jahr.",
+      "conceptTag": "XSLT 2.0"
+    },
+    {
+      "id": "w4c16",
+      "world": 4,
+      "worldName": "WeGA Patterns",
+      "title": "string-join() — das 1.0-Klassiker-Problem",
+      "task": "Gib alle tei:persName kommasepariert in einem <p> aus — ohne trailing comma. Nutze string-join().",
+      "type": "xslt2",
+      "fixture": "letter_001",
+      "expectedType": "html",
+      "expected": "<p>Carl Maria von Weber, Caroline Brandt, Lina, Friedrich Kind, Brühl, Carl</p>",
+      "hints": [
+        "string-join($seq, $sep) verbindet Strings mit Trenner — kein trailing comma, kein leading comma.",
+        "string-join() erwartet xs:string* — Sequenz von Strings.",
+        "<p><xsl:value-of select=\"string-join(//tei:persName/normalize-space(.), ', ')\"/></p>"
+      ],
+      "solution": "<xsl:template match=\"/\">\n  <p><xsl:value-of select=\"string-join(//tei:persName/normalize-space(.), ', ')\"/></p>\n</xsl:template>",
+      "explanation": "In XSLT 1.0 war das kommaseparierte Ausgabe ohne trailing comma ein berüchtigtes Problem (position() = last()-Tricks). string-join() löst es in einer Zeile. Das ist einer der häufigsten Gründe, warum Teams auf 2.0/3.0 umsteigen.",
+      "conceptTag": "XSLT 2.0"
+    },
+    {
+      "id": "w4c17",
+      "world": 4,
+      "worldName": "WeGA Patterns",
+      "title": "Typisierte Sequenzen in xsl:function",
+      "task": "Schreibe eine Funktion local:count-persons($nodes as element()*) as xs:integer die count($nodes) zurückgibt. Rufe sie mit allen tei:persName auf und gib das Ergebnis in <p>Personen: [N]</p> aus.",
+      "type": "xslt2",
+      "fixture": "letter_001",
+      "expectedType": "html",
+      "expected": "<p>Personen: 6</p>",
+      "hints": [
+        "element()* meint 'Sequenz von null oder mehr Elementen beliebigen Typs'.",
+        "as=\"xs:integer\" am xsl:function-Element deklariert den Rückgabetyp.",
+        "<xsl:function name=\"local:count-persons\" as=\"xs:integer\"><xsl:param name=\"nodes\" as=\"element()*\"/><xsl:sequence select=\"count($nodes)\"/></xsl:function>\n<xsl:template match=\"/\"><p>Personen: <xsl:value-of select=\"local:count-persons(//tei:persName)\"/></p></xsl:template>"
+      ],
+      "solution": "<xsl:function name=\"local:count-persons\" as=\"xs:integer\">\n  <xsl:param name=\"nodes\" as=\"element()*\"/>\n  <xsl:sequence select=\"count($nodes)\"/>\n</xsl:function>\n<xsl:template match=\"/\">\n  <p>Personen: <xsl:value-of select=\"local:count-persons(//tei:persName)\"/></p>\n</xsl:template>",
+      "explanation": "XSLT 2.0 kennt das XSD-Typsystem: xs:string, xs:integer, element(), element()*, node()*, … Das macht Stylesheets wartbarer — Saxon meldet Typfehler sofort, anstatt stille Fehler zu produzieren. element()* ist die Sequenz beliebig vieler Elemente.",
+      "conceptTag": "XSLT 2.0"
+    },
+    {
+      "id": "w4c18",
+      "world": 4,
+      "worldName": "WeGA Patterns",
+      "title": "Integration 2.0: Funktion + Grupierung + Join",
+      "task": "Erzeuge eine Zusammenfassung: <div><p>Personen: [names kommasepariert]</p><p>Notiz-Typen: [types kommasepariert]</p></div>. Nutze string-join() für beide Ausgaben.",
+      "type": "xslt2",
+      "fixture": "letter_001",
+      "expectedType": "html",
+      "expected": "<div><p>Personen: Carl Maria von Weber, Caroline Brandt, Lina, Friedrich Kind, Brühl, Carl</p><p>Notiz-Typen: commentary, textConst</p></div>",
+      "hints": [
+        "Für Personen: string-join(//tei:persName/normalize-space(.), ', ')",
+        "Für Notiz-Typen: distinct-values(//tei:note/@type) liefert die eindeutigen Typen als Sequenz.",
+        "<xsl:template match=\"/\"><div><p>Personen: <xsl:value-of select=\"string-join(//tei:persName/normalize-space(.), ', ')\"/></p><p>Notiz-Typen: <xsl:value-of select=\"string-join(distinct-values(//tei:note/@type), ', ')\"/></p></div></xsl:template>"
+      ],
+      "solution": "<xsl:template match=\"/\">\n  <div>\n    <p>Personen: <xsl:value-of select=\"string-join(//tei:persName/normalize-space(.), ', ')\"/></p>\n    <p>Notiz-Typen: <xsl:value-of select=\"string-join(distinct-values(//tei:note/@type), ', ')\"/></p>\n  </div>\n</xsl:template>",
+      "explanation": "string-join() + distinct-values() ist ein typisches XSLT-2.0-Combo-Pattern. distinct-values() gibt eine xs:anyAtomicType*-Sequenz zurück — perfekt als Eingabe für string-join(). Zusammen mit xsl:function macht das WeGA-Stylesheets viel kompakter als in 1.0.",
+      "conceptTag": "XSLT 2.0"
     }
   ],
   "world5": [
@@ -1309,7 +1423,13 @@ window.CONCEPTS = {
       "",
       "Beispiel:",
       "  //tei:persName/string()  →  [\"Weber\", \"Brandt\"]"
-    ]
+    ],
+    "sandbox": {
+      "type": "xpath",
+      "fixture": "letter_001",
+      "placeholder": "//tei:",
+      "hint": "Probier //tei:persName"
+    }
   },
   "1:Predicates": {
     "title": "Predicates",
@@ -1328,7 +1448,13 @@ window.CONCEPTS = {
       "",
       "Beispiel:",
       "  //tei:note[@type='commentary']  →  Kommentar-Notizen"
-    ]
+    ],
+    "sandbox": {
+      "type": "xpath",
+      "fixture": "letter_001",
+      "placeholder": "//tei:note[@type=",
+      "hint": "Probier //tei:note[@type='commentary']"
+    }
   },
   "1:Achsen und Funktionen": {
     "title": "Achsen und Funktionen",
@@ -1365,7 +1491,13 @@ window.CONCEPTS = {
       "",
       "Auch ein einzelner Funktionsaufruf ist gültiges XQuery:",
       "  distinct-values(//tei:note/@type)"
-    ]
+    ],
+    "sandbox": {
+      "type": "flwor",
+      "fixture": "letter_001",
+      "placeholder": "for $p in //tei:",
+      "hint": "Probier: for $p in //tei:persName return string($p)"
+    }
   },
   "2:let": {
     "title": "let und where",
@@ -1382,7 +1514,13 @@ window.CONCEPTS = {
       "",
       "Unterschied: for iteriert, let berechnet, where filtert.",
       "let kann auch innerhalb von for stehen (pro Iteration)."
-    ]
+    ],
+    "sandbox": {
+      "type": "flwor",
+      "fixture": "letter_001",
+      "placeholder": "let $x := ",
+      "hint": "Probier: let $s := //tei:correspAction[@type='sent']//tei:persName[1] return string($s)"
+    }
   },
   "2:where": {
     "title": "where",
@@ -1906,6 +2044,32 @@ window.CONCEPTS = {
       "",
       "4. map{} für JSON-ähnliche Rückgabe:",
       "   map { 'id': $id, 'title': $title }"
+    ]
+  },
+  "4:XSLT 2.0": {
+    "title": "XSLT 2.0 — Jetzt mit Saxon",
+    "icon": "🚀",
+    "lines": [
+      "Du wechselst jetzt auf den Saxon-Prozessor — denselben",
+      "den die WeGA wirklich nutzt.",
+      "",
+      "XSLT 2.0 fühlt sich anders an: echte Funktionen,",
+      "echte Regex, keine Hacks mehr.",
+      "",
+      "xsl:function   → wie eine Funktion in jeder Sprache",
+      "  declare function local:name($p as element()) as xs:string",
+      "",
+      "xsl:for-each-group → Gruppieren ohne Muenchian-Tricks",
+      "  group-by=\"@type\"  current-group()  current-grouping-key()",
+      "",
+      "matches() replace() → reguläre Ausdrücke in XPath",
+      "  replace($d, '(\\d{4})-(\\d{2})-(\\d{2})', '$3.$2.$1')",
+      "",
+      "string-join()  → kein concat()-Gefummel mehr",
+      "  string-join(//tei:persName/string(), ', ')",
+      "",
+      "Stylesheet-Header bleibt fast gleich — nur version=\"2.0\"",
+      "und xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" dazu."
     ]
   }
 };

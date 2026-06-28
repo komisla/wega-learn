@@ -326,3 +326,172 @@ kbd {
   margin-top: 8px;
   overflow-x: auto;
 }
+
+/* ============================================================
+   Review Banner (Weltauswahl)
+   ============================================================ */
+.review-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel); border: 1px solid var(--accent-dk);
+  border-radius: 12px; padding: 14px 20px; margin-bottom: 20px;
+  gap: 14px; animation: fadeIn .3s;
+}
+#reviewBannerText { font-weight: 600; color: var(--accent); }
+.review-start-btn { padding: 8px 16px; font-size: 13px; }
+
+/* Mastery badge on challenge tile (world card dots) */
+.mastered-badge {
+  display: inline-block; font-size: 11px; color: var(--accent);
+  font-family: var(--mono);
+}
+.world-mastered-line {
+  font-size: 12px; color: var(--accent); font-family: var(--mono);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   Combo Display
+   ============================================================ */
+.stat.combo {
+  color: #ff8a3d; font-family: var(--mono); font-weight: 800;
+  font-size: 15px; animation: comboPop .3s;
+}
+@keyframes comboPop {
+  0%   { transform: scale(.8); opacity: .6; }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+/* On Fire: header border flash */
+#topbar.on-fire {
+  border-bottom-color: #ff8a3d;
+  animation: onFirePulse .6s;
+}
+@keyframes onFirePulse {
+  0%,100% { border-bottom-color: var(--border); }
+  40%     { border-bottom-color: #ff8a3d; box-shadow: 0 4px 20px #ff8a3d40; }
+}
+/* Combo lost animation */
+.combo-lost {
+  position: absolute; font-family: var(--mono); font-size: 14px;
+  color: #ff8a3d; opacity: .8; animation: comboLost .6s forwards; pointer-events: none;
+}
+@keyframes comboLost {
+  0%   { opacity: .8; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-30px); }
+}
+
+/* Combo float label next to XP float */
+.combo-float {
+  position: absolute; font-family: var(--mono); font-weight: 800; font-size: 17px;
+  color: #ff8a3d; text-shadow: 0 2px 8px #000; animation: xpFloat 1.1s forwards;
+}
+
+/* ============================================================
+   LLM-Lernprompt Button
+   ============================================================ */
+.llm-prompt-btn {
+  border-color: #9c6fff; color: #c4a0ff;
+  animation: fadeIn .3s;
+}
+.llm-prompt-btn:hover { background: #1e1040; border-color: #c4a0ff; }
+
+.llm-prompt-feedback {
+  font-size: 12px; color: var(--text-dim); margin-top: 6px;
+  animation: fadeIn .3s;
+}
+
+/* ============================================================
+   Achievement System
+   ============================================================ */
+/* Unlock overlay */
+.achievement-unlock-overlay { z-index: 150; background: #0a0e1c99; }
+.achievement-unlock-card {
+  border-color: var(--accent); text-align: center; padding: 32px 40px;
+  max-width: 360px; animation: popIn .35s;
+}
+.achievement-unlock-icon { font-size: 60px; animation: bounce 1s; }
+.achievement-unlock-label {
+  font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--accent); margin: 8px 0 4px; font-weight: 700;
+}
+.achievement-unlock-name { font-size: 20px; font-weight: 800; margin: 0 0 6px; }
+.achievement-unlock-desc { color: var(--text-dim); font-size: 14px; }
+
+/* Achievement gallery modal */
+.achievement-modal-card {
+  max-width: 560px; width: 92%; padding: 0;
+  max-height: 85vh; display: flex; flex-direction: column;
+}
+.achievement-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+}
+.achievement-modal-header h2 { margin: 0; font-size: 18px; }
+
+.achievement-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  padding: 18px 22px 22px; overflow-y: auto;
+}
+@media (max-width: 520px) { .achievement-grid { grid-template-columns: 1fr; } }
+
+.achievement-badge {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px; display: flex; gap: 14px;
+  align-items: flex-start; transition: .15s;
+}
+.achievement-badge.unlocked { border-color: var(--accent); background: #1e2a3a; }
+.achievement-badge.locked { opacity: .45; filter: grayscale(.8); }
+.achievement-badge-icon { font-size: 28px; flex-shrink: 0; }
+.achievement-badge-info { display: flex; flex-direction: column; gap: 2px; }
+.achievement-badge-name { font-weight: 700; font-size: 14px; }
+.achievement-badge-desc { font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+
+/* #achievementBtn glow when new achievement */
+#achievementBtn.has-new { color: var(--accent); border-color: var(--accent); animation: statPulse .6s 2; }
+
+/* ============================================================
+   Concept Card Sandbox
+   ============================================================ */
+.concept-sandbox {
+  margin: 14px 0 0; border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.concept-sandbox-label {
+  font-size: 12px; color: var(--text-dim); margin-bottom: 6px;
+  letter-spacing: .5px; font-weight: 600;
+}
+.concept-sandbox-input {
+  font-family: var(--mono); font-size: 13px; line-height: 1.5;
+  background: #0f1830; color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; width: 100%; resize: none;
+  outline: none; min-height: 52px;
+}
+.concept-sandbox-input:focus { border-color: var(--accent-dk); }
+.concept-sandbox-actions {
+  display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+}
+.concept-sandbox-run {
+  background: var(--panel-2); color: var(--accent); border: 1px solid var(--accent-dk);
+  border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+  font-family: var(--sans); transition: .15s;
+}
+.concept-sandbox-run:hover { background: var(--panel); border-color: var(--accent); }
+.concept-sandbox-reset {
+  background: none; color: var(--text-dim); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+  font-family: var(--sans); transition: .15s;
+}
+.concept-sandbox-reset:hover { color: var(--text); }
+.concept-sandbox-hint-text {
+  font-size: 12px; color: var(--text-dim); align-self: center;
+  font-style: italic;
+}
+.concept-sandbox-output {
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.45;
+  background: #0f1830; border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; margin-top: 8px; white-space: pre-wrap;
+  word-break: break-word; min-height: 36px; color: var(--text-dim);
+  max-height: 120px; overflow: auto;
+}
+.concept-sandbox-output.has-result { color: var(--text); border-color: var(--success); }
+.concept-sandbox-output.has-error  { color: #ffb4ae; border-color: var(--error); }

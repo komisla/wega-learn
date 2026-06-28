@@ -1,29 +1,52 @@
 /* ============================================================
    wega-learn — app.js
    Challenge-Runner, XP-Logik, State, Event-Handling
+   Features: LLM-Lernprompt · Spaced Repetition · XSLT 2.0 (SaxonJS)
+             Combo-Multiplikator · Achievements · Concept-Sandbox
    ============================================================ */
 'use strict';
 
 // ----------------------------- Config -----------------------------
-const XP_BASE = 100;
+const XP_BASE      = 100;
 const HINT_PENALTY = 25;
 const PERFECT_BONUS = 50;
-const STORAGE_KEY = 'wega-learn-state';
+const STORAGE_KEY  = 'wega-learn-state';
 
 const WORLD_META = {
-  1: { icon: '🧭', name: 'XPath Navigator', tech: 'XPath 3.1' },
-  2: { icon: '⚗️', name: 'FLWOR Forge',    tech: 'XQuery / FLWOR' },
-  3: { icon: '🔧', name: 'XSLT Basics',    tech: 'XSLT 1.0' },
-  4: { icon: '🏛️', name: 'WeGA Patterns',  tech: 'XSLT 1.0 + XPath' },
-  5: { icon: '🗄️', name: 'eXist-db Query', tech: 'XQuery + eXist-db' }
+  1: { icon: '🧭', name: 'XPath Navigator',  tech: 'XPath 3.1' },
+  2: { icon: '⚗️', name: 'FLWOR Forge',      tech: 'XQuery / FLWOR' },
+  3: { icon: '🔧', name: 'XSLT Basics',      tech: 'XSLT 1.0' },
+  4: { icon: '🏛️', name: 'WeGA Patterns',    tech: 'XSLT 1.0 + 2.0' },
+  5: { icon: '🗄️', name: 'eXist-db Query',  tech: 'XQuery + eXist-db' }
 };
 const MAX_WORLD = 5;
+
+const WORLD_TECH_LABEL = {
+  1: 'XPath', 2: 'FLWOR', 3: 'XSLT 1.0', 4: 'XSLT 2.0', 5: 'XQuery in eXist-db'
+};
 
 const XSLT_STARTER =
 `<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:tei="http://www.tei-c.org/ns/1.0">
+
+  <xsl:output method="html"/>
+
+  <xsl:template match="/">
+    <!-- Dein Code hier -->
+  </xsl:template>
+
+</xsl:stylesheet>`;
+
+const XSLT2_STARTER =
+`<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="2.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:tei="http://www.tei-c.org/ns/1.0"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:local="http://local"
+  exclude-result-prefixes="tei xs local">
 
   <xsl:output method="html"/>
 
@@ -44,12 +67,28 @@ const nsResolverFn = p => ({
   'xml': 'http://www.w3.org/XML/1998/namespace'
 }[p] || null);
 
+// ============================================================
+//  Achievements
+// ============================================================
+const ACHIEVEMENTS = [
+  { id: 'first_xpath',     icon: '🧭', name: 'Namespace-Jäger',     desc: 'Erste XPath-Challenge korrekt gelöst' },
+  { id: 'no_hints_world1', icon: '🎓', name: 'Autodidakt',           desc: 'Welt 1 komplett ohne einen einzigen Hint' },
+  { id: 'combo_5',         icon: '🔥', name: 'On Fire',              desc: '5 Challenges in Folge ohne Hint oder Fehler' },
+  { id: 'llm_prompt',      icon: '🔍', name: 'Tiefgräber',           desc: 'LLM-Lernprompt 3× genutzt' },
+  { id: 'first_mastered',  icon: '⭐', name: 'Meister eines Fachs',  desc: 'Erste Challenge gemeistert (3× ohne Hint)' },
+  { id: 'world3_done',     icon: '🔧', name: 'Template-Schreiber',   desc: 'Welt 3 vollständig abgeschlossen' },
+  { id: 'world4_done',     icon: '🏛️', name: 'WeGA-Kenner',          desc: 'Welt 4 vollständig abgeschlossen (inkl. XSLT 2.0)' },
+  { id: 'all_mastered_w1', icon: '🧠', name: 'XPath-Instinkt',       desc: 'Alle Welt-1-Challenges gemeistert' }
+];
+
 // ----------------------------- State -----------------------------
 let state = loadState();
 let current = null;
 let hintsUsed = 0;
 let attempts = 0;
 let solved = false;
+let isReviewMode = false;
+let reviewQueue = [];  // array of {world, index} for review mode
 
 function defaultState() {
   return {
@@ -57,9 +96,14 @@ function defaultState() {
     streak: 0,
     completed: [],
     unlockedWorlds: [1],
-    seenConcepts: []   // keys like "1:Grundnavigation"
+    seenConcepts: [],
+    challengeStats: {},   // 'w1c01': { attempts, hintsUsed, correctCount, lastSeen, mastered }
+    achievements: [],     // array of unlocked achievement ids
+    comboCount: 0,
+    llmPromptCount: 0     // for 'Tiefgräber' achievement
   };
 }
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -75,7 +119,9 @@ function saveState() {
 const $ = id => document.getElementById(id);
 const els = {
   xp: $('xpValue'), streak: $('streakValue'),
+  comboDisplay: $('comboDisplay'), comboText: $('comboText'),
   worldSelect: $('worldSelect'), worldGrid: $('worldGrid'),
+  reviewBanner: $('reviewBanner'), reviewBannerText: $('reviewBannerText'), reviewBtn: $('reviewBtn'),
   challengeScreen: $('challengeScreen'),
   cWorldName: $('cWorldName'), cProgress: $('cProgress'),
   cTitleText: $('cTitleText'), cTask: $('cTask'), cConcept: $('cConcept'),
@@ -84,11 +130,19 @@ const els = {
   outputView: $('outputView'), expectedView: $('expectedView'),
   hintBtn: $('hintBtn'), hintCount: $('hintCount'), hintArea: $('hintArea'),
   solutionBtn: $('solutionBtn'), runBtn: $('runBtn'), nextBtn: $('nextBtn'),
+  llmPromptBtn: $('llmPromptBtn'),
   feedbackMsg: $('feedbackMsg'),
   worldDoneOverlay: $('worldDoneOverlay'), worldDoneTitle: $('worldDoneTitle'),
   worldDoneText: $('worldDoneText'), worldDoneBtn: $('worldDoneBtn'),
   xpFloatLayer: $('xpFloatLayer'),
-  conceptOverlay: $('conceptOverlay')
+  conceptOverlay: $('conceptOverlay'),
+  achievementOverlay: $('achievementOverlay'),
+  achievementUnlockIcon: $('achievementUnlockIcon'),
+  achievementUnlockName: $('achievementUnlockName'),
+  achievementUnlockDesc: $('achievementUnlockDesc'),
+  achievementModal: $('achievementModal'),
+  achievementGrid: $('achievementGrid'),
+  achievementBtn: $('achievementBtn')
 };
 
 // ----------------------------- Data access -----------------------------
@@ -97,6 +151,9 @@ function challengeAt(world, index) { return worldChallenges(world)[index]; }
 function isCompleted(id) { return state.completed.includes(id); }
 function worldCompletedCount(world) {
   return worldChallenges(world).filter(c => isCompleted(c.id)).length;
+}
+function worldMasteredCount(world) {
+  return worldChallenges(world).filter(c => isMastered(c.id)).length;
 }
 function isWorldUnlocked(world) { return state.unlockedWorlds.includes(world); }
 function isWorldDone(world) {
@@ -116,6 +173,91 @@ function markConceptSeen(world, tag) {
 }
 
 // ============================================================
+//  Challenge Stats + Mastery (Feature 2)
+// ============================================================
+function getStats(id) {
+  if (!state.challengeStats[id]) {
+    state.challengeStats[id] = { attempts: 0, hintsUsed: 0, correctCount: 0, lastSeen: null, mastered: false };
+  }
+  return state.challengeStats[id];
+}
+
+function isMastered(id) {
+  return state.challengeStats[id] && state.challengeStats[id].mastered;
+}
+
+function recordChallengeResult(id, correct, usedHints) {
+  const s = getStats(id);
+  s.attempts++;
+  s.lastSeen = new Date().toISOString().slice(0, 10);
+  if (correct) {
+    if (!usedHints) {
+      s.correctCount++;
+      if (s.correctCount >= 3 && !s.mastered) {
+        s.mastered = true;
+        saveState();
+        checkAchievement('first_mastered');
+        checkAllMasteredW1();
+      }
+    }
+  }
+  s.hintsUsed = usedHints ? (s.hintsUsed || 0) + 1 : s.hintsUsed;
+  saveState();
+}
+
+// ============================================================
+//  Review Mode (Feature 2)
+// ============================================================
+function buildReviewQueue() {
+  const today = new Date().toISOString().slice(0, 10);
+  const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+  const queue = [];
+
+  for (let w = 1; w <= MAX_WORLD; w++) {
+    worldChallenges(w).forEach((ch, idx) => {
+      if (!isCompleted(ch.id)) return;
+      if (isMastered(ch.id)) return;
+      const s = state.challengeStats[ch.id];
+      if (!s) return;
+      // Include if: not mastered AND (has used hints at last attempt OR not seen in 2+ days)
+      const notSeenRecently = !s.lastSeen || s.lastSeen <= twoDaysAgo;
+      const hadHints = s.hintsUsed > 0;
+      if (hadHints || notSeenRecently) {
+        queue.push({ world: w, index: idx, lastSeen: s.lastSeen, hintsUsed: s.hintsUsed });
+      }
+    });
+  }
+
+  // Sort: challenges with hints first, then by lastSeen ascending (oldest first)
+  queue.sort((a, b) => {
+    if (b.hintsUsed !== a.hintsUsed) return b.hintsUsed - a.hintsUsed;
+    if (a.lastSeen < b.lastSeen) return -1;
+    if (a.lastSeen > b.lastSeen) return 1;
+    return 0;
+  });
+
+  return queue;
+}
+
+function updateReviewBanner() {
+  const queue = buildReviewQueue();
+  if (queue.length > 0) {
+    els.reviewBanner.hidden = false;
+    els.reviewBannerText.textContent = '🔄 Review — ' + queue.length + ' offen';
+  } else {
+    els.reviewBanner.hidden = true;
+  }
+}
+
+function startReviewMode() {
+  reviewQueue = buildReviewQueue();
+  if (reviewQueue.length === 0) return;
+  isReviewMode = true;
+  const first = reviewQueue.shift();
+  openChallenge(first.world, first.index);
+}
+
+// ============================================================
 //  Screen 1: Weltauswahl
 // ============================================================
 function renderWorldSelect() {
@@ -124,6 +266,7 @@ function renderWorldSelect() {
     const meta = WORLD_META[w];
     const total = worldChallenges(w).length;
     const done = worldCompletedCount(w);
+    const mastered = worldMasteredCount(w);
     const unlocked = isWorldUnlocked(w);
     const finished = isWorldDone(w);
 
@@ -137,7 +280,7 @@ function renderWorldSelect() {
       <div class="world-tech">${meta.tech}</div>
       <div class="world-count">${total} Challenges</div>
       <div class="world-progress-bar"><div class="world-progress-fill" style="width:${total ? (done/total*100) : 0}%"></div></div>
-      <div class="world-prog-text">${done}/${total}</div>
+      <div class="world-prog-text">${done}/${total} ✓${mastered > 0 ? ' · ' + mastered + '⭐ gemeistert' : ''}</div>
       <div class="world-actions"></div>
     `;
 
@@ -158,6 +301,8 @@ function renderWorldSelect() {
     els.worldGrid.appendChild(card);
   }
   updateStatsUI();
+  updateReviewBanner();
+  updateAchievementBtn();
 }
 
 function unlockWorld(world) {
@@ -183,8 +328,6 @@ function needsConceptCard(world, index) {
   if (!ch || !ch.conceptTag) return false;
   const tag = ch.conceptTag;
   if (hasSeenConcept(world, tag)) return false;
-  // nur zeigen wenn entweder erste Challenge der Gruppe ODER
-  // vorherige Challenge hatte anderen conceptTag
   if (index === 0) return true;
   const prev = challengeAt(world, index - 1);
   return !prev || prev.conceptTag !== tag;
@@ -222,6 +365,13 @@ function showConceptCard(world, conceptTag, onDone) {
   } else {
     body.textContent = '(Kein Inhalt vorhanden)';
   }
+
+  // Feature 6: Sandbox
+  if (data && data.sandbox) {
+    const sb = buildConceptSandbox(data.sandbox);
+    body.appendChild(sb);
+  }
+
   card.appendChild(body);
 
   // Button
@@ -239,6 +389,87 @@ function showConceptCard(world, conceptTag, onDone) {
   btn.focus();
 }
 
+// Feature 6: Concept Card Sandbox
+function buildConceptSandbox(sbConfig) {
+  const wrap = document.createElement('div');
+  wrap.className = 'concept-sandbox';
+
+  const label = document.createElement('div');
+  label.className = 'concept-sandbox-label';
+  label.textContent = '▶ Sandbox — einfach ausprobieren';
+  wrap.appendChild(label);
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'concept-sandbox-input';
+  textarea.rows = 2;
+  textarea.placeholder = sbConfig.placeholder || '';
+  textarea.spellcheck = false;
+  wrap.appendChild(textarea);
+
+  const actions = document.createElement('div');
+  actions.className = 'concept-sandbox-actions';
+
+  const runBtn = document.createElement('button');
+  runBtn.className = 'concept-sandbox-run';
+  runBtn.textContent = '▶ Ausprobieren';
+  actions.appendChild(runBtn);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'concept-sandbox-reset';
+  resetBtn.textContent = '↺ Zurücksetzen';
+  actions.appendChild(resetBtn);
+
+  if (sbConfig.hint) {
+    const hint = document.createElement('span');
+    hint.className = 'concept-sandbox-hint-text';
+    hint.textContent = sbConfig.hint;
+    actions.appendChild(hint);
+  }
+  wrap.appendChild(actions);
+
+  const output = document.createElement('pre');
+  output.className = 'concept-sandbox-output';
+  output.textContent = '(Ausgabe erscheint hier)';
+  wrap.appendChild(output);
+
+  runBtn.addEventListener('click', () => {
+    const expr = textarea.value.trim();
+    if (!expr) return;
+    const fixtureKey = sbConfig.fixture || 'letter_001';
+    const xmlStr = window.TEI_FIXTURES[fixtureKey] || '';
+    try {
+      const doc = new DOMParser().parseFromString(xmlStr, 'application/xml');
+      const fx = window.fontoxpath;
+      const isXQ = sbConfig.type === 'flwor';
+      const lang = isXQ ? fx.evaluateXPath.XQUERY_3_1_LANGUAGE : fx.evaluateXPath.XPATH_3_1_LANGUAGE;
+      const raw = fx.evaluateXPath(expr, doc, null, null, fx.evaluateXPath.ALL_RESULTS_TYPE, {
+        namespaceResolver: nsResolverFn, language: lang
+      });
+      const strings = coerceToStrings(raw);
+      output.textContent = strings.length === 0 ? '(kein Ergebnis)' :
+        strings.length === 1 ? strings[0] : JSON.stringify(strings, null, 2);
+      output.className = 'concept-sandbox-output has-result';
+    } catch (err) {
+      output.textContent = '✗ ' + (err.message || String(err)).slice(0, 200);
+      output.className = 'concept-sandbox-output has-error';
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    textarea.value = '';
+    output.textContent = '(Ausgabe erscheint hier)';
+    output.className = 'concept-sandbox-output';
+    textarea.focus();
+  });
+
+  // Keyboard shortcut inside sandbox
+  textarea.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runBtn.click(); }
+  });
+
+  return wrap;
+}
+
 // ============================================================
 //  Screen 2: Challenge
 // ============================================================
@@ -248,8 +479,8 @@ function showScreen(which) {
 }
 
 function openChallenge(world, index) {
-  // Concept card gate
-  if (needsConceptCard(world, index)) {
+  // Concept card gate (skip in review mode — they know the concept already)
+  if (!isReviewMode && needsConceptCard(world, index)) {
     const ch = challengeAt(world, index);
     showScreen('challenge');
     showConceptCard(world, ch.conceptTag, () => _doOpenChallenge(world, index));
@@ -266,18 +497,23 @@ function _doOpenChallenge(world, index) {
   attempts = 0;
   solved = isCompleted(ch.id);
 
-  els.cWorldName.textContent = 'Welt ' + world + ': ' + ch.worldName;
-  els.cProgress.textContent = (index + 1) + ' / ' + worldChallenges(world).length;
+  // Review mode: track that we've seen this challenge
+  const s = getStats(ch.id);
+  s.lastSeen = new Date().toISOString().slice(0, 10);
+  saveState();
+
+  els.cWorldName.textContent = (isReviewMode ? '🔄 Review — ' : '') + 'Welt ' + world + ': ' + ch.worldName;
+  els.cProgress.textContent = isReviewMode
+    ? (reviewQueue.length + 1) + ' verbleibend'
+    : (index + 1) + ' / ' + worldChallenges(world).length;
   els.cTitleText.textContent = ch.title;
   els.cTask.textContent = ch.task;
-  // code-task styling for challenges where task contains code blocks (explain/write-only)
   els.cTask.classList.toggle('code-task', ch.type === 'explain' || ch.type === 'write-only');
   els.cConcept.textContent = ch.conceptTag || '';
 
   const fixtureName = ch.fixture || '';
   els.cFixtureName.textContent = fixtureName;
 
-  // XML panel — show fixture if available, else code snippet in task
   const xml = fixtureName ? (window.TEI_FIXTURES[fixtureName] || '(Fixture nicht gefunden)') : '';
   if (xml) {
     els.xmlView.textContent = xml;
@@ -286,11 +522,9 @@ function _doOpenChallenge(world, index) {
     els.xmlView.closest('.xml-panel').hidden = false;
   } else {
     els.xmlView.textContent = '';
-    // For explain/write-only, task text contains the code — hide xml panel
     els.xmlView.closest('.xml-panel').hidden = true;
   }
 
-  // Configure UI per challenge type
   setupChallengeUI(ch);
 
   showScreen('challenge');
@@ -298,7 +532,6 @@ function _doOpenChallenge(world, index) {
 }
 
 function setupChallengeUI(ch) {
-  // Reset common UI
   els.outputView.textContent = '—';
   els.outputView.className = 'io-box';
   els.expectedView.className = 'io-box';
@@ -308,37 +541,42 @@ function setupChallengeUI(ch) {
   els.hintArea.innerHTML = '';
   els.nextBtn.hidden = true;
   els.hintBtn.disabled = false;
+  els.llmPromptBtn.hidden = true;
 
-  // Remove any previously injected special panels
-  const prev = $('mcPanel');
-  if (prev) prev.remove();
-  const prevWo = $('woPanel');
-  if (prevWo) prevWo.remove();
+  // Remove previously injected special panels
+  const prev = $('mcPanel');  if (prev) prev.remove();
+  const prevWo = $('woPanel'); if (prevWo) prevWo.remove();
+  // Remove LLM prompt feedback if present
+  const prevLlm = $('llmPromptFeedback'); if (prevLlm) prevLlm.remove();
+
+  // In review mode: hide hint button (no cheating in review)
+  els.hintBtn.hidden = isReviewMode;
 
   if (ch.type === 'explain') {
     setupExplainUI(ch);
   } else if (ch.type === 'write-only') {
     setupWriteOnlyUI(ch);
   } else {
-    // xpath / flwor / xslt
+    const isXslt2 = ch.type === 'xslt2';
+    const isXslt  = ch.type === 'xslt' || isXslt2;
     els.editorLabel.textContent =
       ch.type === 'xpath'  ? 'Dein XPath-Ausdruck' :
       ch.type === 'flwor'  ? 'Dein FLWOR/XQuery-Ausdruck' :
+      isXslt2              ? 'Dein XSLT-2.0-Stylesheet (Saxon)' :
                              'Dein XSLT-Stylesheet';
-    els.editor.value = ch.type === 'xslt' ? XSLT_STARTER : '';
+    els.editor.value = isXslt2 ? XSLT2_STARTER : (isXslt ? XSLT_STARTER : '');
     els.editor.hidden = false;
     els.editorLabel.hidden = false;
     els.runBtn.hidden = false;
-    els.runBtn.textContent = '▶ Ausführen';
+    els.runBtn.textContent = isXslt2 ? '▶ Saxon ausführen' : '▶ Ausführen';
 
     els.expectedView.textContent = formatExpected(ch);
     updateHintCount(ch);
 
-    // Show both io panels
     const ioRow = document.querySelector('.io-row');
     if (ioRow) ioRow.hidden = false;
     els.solutionBtn.hidden = false;
-    els.hintBtn.hidden = false;
+    els.hintBtn.hidden = isReviewMode;
   }
 }
 
@@ -348,8 +586,7 @@ function setupExplainUI(ch) {
   els.editorLabel.hidden = true;
   els.runBtn.hidden = true;
   els.solutionBtn.hidden = true;
-  els.hintBtn.hidden = false;
-  updateHintCount(ch);
+  els.hintBtn.hidden = true;
   const ioRow = document.querySelector('.io-row');
   if (ioRow) ioRow.hidden = true;
 
@@ -367,7 +604,6 @@ function setupExplainUI(ch) {
     panel.appendChild(btn);
   });
 
-  // Insert the panel after the action-bar context — before hintArea
   const workArea = document.querySelector('.work-area');
   workArea.after(panel);
 }
@@ -375,7 +611,6 @@ function setupExplainUI(ch) {
 function handleMCAnswer(ch, chosen, panel) {
   const correct = chosen === ch.correctOption;
   attempts++;
-  // Lock all buttons
   panel.querySelectorAll('.mc-option').forEach((btn, i) => {
     btn.disabled = true;
     if (i === ch.correctOption) btn.classList.add('mc-correct');
@@ -389,9 +624,11 @@ function handleMCAnswer(ch, chosen, panel) {
   } else {
     els.feedbackMsg.textContent = '✗ Nicht ganz — die korrekte Antwort ist grün markiert.';
     els.feedbackMsg.className = 'feedback-msg bad';
-    // Still show explanation + next
+    breakCombo();
     showExplanation(ch);
     els.nextBtn.hidden = false;
+    // In review mode: show LLM prompt immediately on wrong answer
+    if (isReviewMode) showLLMPromptBtn(ch);
     if (navigator.vibrate) navigator.vibrate(80);
   }
 }
@@ -404,13 +641,11 @@ function setupWriteOnlyUI(ch) {
   els.editor.hidden = false;
   els.runBtn.hidden = true;
   els.solutionBtn.hidden = false;
-  els.hintBtn.hidden = false;
-  updateHintCount(ch);
+  els.hintBtn.hidden = true;
 
   const ioRow = document.querySelector('.io-row');
   if (ioRow) ioRow.hidden = true;
 
-  // Self-assessment buttons
   const panel = document.createElement('div');
   panel.id = 'woPanel';
   panel.className = 'wo-panel';
@@ -432,7 +667,9 @@ function setupWriteOnlyUI(ch) {
   $('woSelfWrong').addEventListener('click', () => {
     els.feedbackMsg.textContent = 'Schau dir die Lösung an und versuche es nochmal.';
     els.feedbackMsg.className = 'feedback-msg bad';
+    breakCombo();
     revealSolution();
+    if (isReviewMode) showLLMPromptBtn(ch);
   });
 }
 
@@ -440,28 +677,103 @@ function updateHintCount(ch) {
   const remaining = (ch.hints || []).length - hintsUsed;
   els.hintCount.textContent = Math.max(0, remaining);
   els.hintBtn.disabled = remaining <= 0;
+  // Show LLM prompt when all hints used and at least one wrong attempt
+  if (remaining <= 0 && attempts > 0) showLLMPromptBtn(ch);
 }
 
 function formatExpected(ch) {
   if (ch.expectedType === 'number') return String(ch.expected);
   if (ch.expectedType === 'stringArray') return JSON.stringify(ch.expected, null, 2);
   if (ch.expectedType === 'html') return prettyHtml(ch.expected);
-  return ''; // explain, write-only
+  return '';
 }
 
 // ============================================================
-//  Ausführen + Vergleich
+//  Feature 1: LLM-Lernprompt
+// ============================================================
+function showLLMPromptBtn(ch) {
+  if (!els.llmPromptBtn.hidden) return; // already visible
+  els.llmPromptBtn.hidden = false;
+
+  els.llmPromptBtn.onclick = () => {
+    const worldNum = current ? current.world : (ch.world || 1);
+    const techLabel = WORLD_TECH_LABEL[worldNum] || 'XPath';
+    const fixtureXml = ch.fixture ? (window.TEI_FIXTURES[ch.fixture] || '') : '';
+    const fixtureLines = fixtureXml.split('\n').slice(0, 30).join('\n');
+    const userInput = els.editor ? els.editor.value.trim() : '';
+
+    let expectedDesc = '';
+    if (ch.expectedType === 'number') expectedDesc = 'eine Zahl: ' + ch.expected;
+    else if (ch.expectedType === 'stringArray') expectedDesc = 'ein Array mit ' + (ch.expected || []).length + ' Strings: ' + JSON.stringify(ch.expected || []);
+    else if (ch.expectedType === 'html') expectedDesc = 'HTML-Ausgabe: ' + (ch.expected || '').slice(0, 200);
+    else if (ch.expectedType === 'choice') expectedDesc = 'Option ' + (ch.correctOption !== undefined ? String.fromCharCode(65 + ch.correctOption) : '?');
+    else if (ch.expectedType === 'write-only') expectedDesc = 'Selbsteinschätzung — Lösung ist im Stylesheet';
+    else expectedDesc = '(kein erwarteter Wert)';
+
+    const prompt = `Ich lerne ${techLabel} und hänge bei einer Aufgabe.
+
+**Aufgabe:**
+${ch.task}
+
+**Das XML-Fixture (vereinfacht):**
+\`\`\`xml
+${fixtureLines}
+\`\`\`
+
+**Mein Versuch:**
+\`\`\`
+${userInput || '(noch nichts eingegeben)'}
+\`\`\`
+
+**Was erwartet wird (als Hinweis, nicht als Lösung):**
+${expectedDesc}
+
+Erkläre mir bitte:
+1. Was habe ich falsch gedacht?
+2. Welches Konzept habe ich missverstanden?
+3. Zeige mir ein vereinfachtes analoges Beispiel das mir hilft es zu verstehen.
+
+Zeige mir NICHT die direkte Lösung für diese Aufgabe — ich will sie selbst lösen nachdem ich das Konzept verstanden habe.`;
+
+    navigator.clipboard.writeText(prompt).then(() => {
+      // Increment llmPromptCount and check achievement
+      state.llmPromptCount = (state.llmPromptCount || 0) + 1;
+      saveState();
+      if (state.llmPromptCount >= 3) checkAchievement('llm_prompt');
+
+      // Feedback below the button
+      let fb = $('llmPromptFeedback');
+      if (!fb) {
+        fb = document.createElement('div');
+        fb.id = 'llmPromptFeedback';
+        fb.className = 'llm-prompt-feedback';
+        els.llmPromptBtn.after(fb);
+      }
+      fb.textContent = 'Prompt kopiert — in Claude, ChatGPT oder ein anderes LLM einfügen.';
+    }).catch(() => {
+      // Fallback: open in a textarea for manual copy
+      const win = window.open('', '_blank', 'width=600,height=400');
+      if (win) {
+        win.document.write('<html><body><textarea style="width:100%;height:95%">' + escapeHtml(prompt) + '</textarea></body></html>');
+      }
+    });
+  };
+}
+
+// ============================================================
+//  Runner: Ausführen + Vergleich
 // ============================================================
 function runChallenge() {
   if (!current) return;
   const ch = challengeAt(current.world, current.index);
-  if (ch.type === 'explain' || ch.type === 'write-only') return; // handled elsewhere
+  if (ch.type === 'explain' || ch.type === 'write-only') return;
   attempts++;
   let result;
   try {
-    if (ch.type === 'xpath')      result = runXPath(ch, false);
-    else if (ch.type === 'flwor') result = runXPath(ch, true);
-    else                          result = runXSLT(ch);
+    if (ch.type === 'xpath')       result = runXPath(ch, false);
+    else if (ch.type === 'flwor')  result = runXPath(ch, true);
+    else if (ch.type === 'xslt2') result = runXSLT2(ch);
+    else                           result = runXSLT(ch);
   } catch (err) {
     return showError(humanizeError(err));
   }
@@ -518,7 +830,7 @@ function nodeToString(item) {
   return String(item);
 }
 
-// ---- XSLT via Browser-XSLTProcessor ----
+// ---- XSLT 1.0 via Browser-XSLTProcessor ----
 function runXSLT(ch) {
   let xsltStr = els.editor.value;
   if (!xsltStr.trim()) return { error: 'Bitte schreibe ein Stylesheet.' };
@@ -546,6 +858,49 @@ function runXSLT(ch) {
   container.appendChild(frag.cloneNode(true));
   const actualHtml = container.innerHTML;
   return { display: prettyHtml(actualHtml), correct: compareXSLTOutput(actualHtml, ch.expected) };
+}
+
+// ---- XSLT 2.0 via SaxonJS ----
+function runXSLT2(ch) {
+  let xsltStr = els.editor.value.trim();
+  if (!xsltStr) return { error: 'Bitte schreibe ein XSLT-2.0-Stylesheet.' };
+
+  if (!window.SaxonJS) return { error: 'SaxonJS konnte nicht geladen werden. Bitte Internetverbindung prüfen.' };
+
+  const xmlStr = window.TEI_FIXTURES[ch.fixture];
+  if (!xmlStr) return { error: 'Fixture nicht gefunden: ' + ch.fixture };
+
+  // Wrap body-only solutions into full stylesheet
+  if (!xsltStr.includes('<xsl:stylesheet')) {
+    xsltStr = wrapXsltSolution(xsltStr, '2.0');
+  }
+
+  let result;
+  try {
+    result = window.SaxonJS.transform({
+      stylesheetText: xsltStr,
+      sourceText: xmlStr,
+      destination: 'serialized'
+    }, 'sync');
+  } catch (err) {
+    return { error: 'Saxon-Fehler: ' + saxonErrorMsg(err) };
+  }
+
+  if (!result || result.principalResult == null) {
+    return { error: 'Saxon lieferte kein Ergebnis. Prüfe dein Stylesheet.' };
+  }
+
+  const actualHtml = String(result.principalResult);
+  return { display: prettyHtml(actualHtml), correct: compareXSLTOutput(actualHtml, ch.expected) };
+}
+
+function saxonErrorMsg(err) {
+  if (!err) return 'Unbekannter Fehler';
+  const m = err.message || String(err);
+  // Try to extract the human-readable part
+  const match = m.match(/Q\{[^}]+\}[A-Z0-9]+:\s*(.+)/);
+  if (match) return match[1].slice(0, 300);
+  return m.slice(0, 300);
 }
 
 // ============================================================
@@ -594,37 +949,115 @@ function unwrapAutoTbody(el) {
 }
 
 // ============================================================
+//  Feature 4: Combo Multiplier
+// ============================================================
+function calcXP(hintsUsedCount, attemptsCount, chType) {
+  const mult = state.comboCount >= 4 ? 2.5 :
+               state.comboCount >= 3 ? 2.0 :
+               state.comboCount >= 2 ? 1.5 : 1.0;
+  const isPerfect = (hintsUsedCount === 0 && attemptsCount === 1) ||
+                    chType === 'explain' || chType === 'write-only';
+  let base = XP_BASE - hintsUsedCount * HINT_PENALTY;
+  if (isPerfect) base += PERFECT_BONUS;
+  return { xp: Math.max(10, Math.round(base * mult)), mult, isPerfect };
+}
+
+function incrementCombo() {
+  state.comboCount++;
+  saveState();
+  updateComboUI();
+  if (state.comboCount >= 5) checkAchievement('combo_5');
+}
+
+function breakCombo() {
+  if (state.comboCount <= 0) return;
+  // Show 'combo lost' animation
+  if (state.comboCount >= 2) {
+    const el = document.createElement('div');
+    el.className = 'combo-lost';
+    el.textContent = state.comboCount + '× verloren';
+    const bar = document.querySelector('.action-bar');
+    if (bar) {
+      bar.style.position = 'relative';
+      bar.appendChild(el);
+      setTimeout(() => el.remove(), 700);
+    }
+  }
+  state.comboCount = 0;
+  saveState();
+  updateComboUI();
+}
+
+function updateComboUI() {
+  if (state.comboCount >= 2) {
+    const icon = state.comboCount >= 4 ? '🔥🔥🔥' : state.comboCount >= 3 ? '🔥🔥' : '🔥';
+    const mult = state.comboCount >= 4 ? '2.5×' : state.comboCount >= 3 ? '2.0×' : '1.5×';
+    els.comboText.textContent = mult + ' ' + icon;
+    els.comboDisplay.hidden = false;
+    els.comboDisplay.classList.remove('pulse');
+    void els.comboDisplay.offsetWidth;
+    els.comboDisplay.classList.add('pulse');
+
+    if (state.comboCount >= 4) {
+      const topbar = document.getElementById('topbar');
+      topbar.classList.remove('on-fire');
+      void topbar.offsetWidth;
+      topbar.classList.add('on-fire');
+      setTimeout(() => topbar.classList.remove('on-fire'), 700);
+    }
+  } else {
+    els.comboDisplay.hidden = true;
+  }
+}
+
+// ============================================================
 //  Korrekt / Falsch
 // ============================================================
 function onCorrect(ch) {
   els.outputView.classList.add('correct');
-  els.expectedView.classList.add('correct');
+  if (els.expectedView) els.expectedView.classList.add('correct');
 
   const alreadyCompleted = isCompleted(ch.id);
   solved = true;
 
+  // Record stats
+  recordChallengeResult(ch.id, true, hintsUsed > 0);
+
   if (!alreadyCompleted) {
-    // write-only and explain always give perfect XP (no auto-run possible)
-    let gained = XP_BASE - hintsUsed * HINT_PENALTY;
-    if ((hintsUsed === 0 && attempts === 1) || ch.type === 'explain' || ch.type === 'write-only') {
-      gained += PERFECT_BONUS;
-    }
-    gained = Math.max(10, gained);
+    incrementCombo();
+    const { xp: gained, mult, isPerfect } = calcXP(hintsUsed, attempts, ch.type);
 
     state.xp += gained;
     state.streak += 1;
     state.completed.push(ch.id);
     saveState();
 
-    floatXP(gained);
+    floatXP(gained, mult);
     pulseStat(els.xp.parentElement);
     pulseStat(els.streak.parentElement);
     updateStatsUI();
 
-    const isP = (hintsUsed === 0 && attempts === 1) || ch.type === 'explain' || ch.type === 'write-only';
-    els.feedbackMsg.textContent = (isP ? '✓ Perfect! +' : '✓ Korrekt! +') + gained + ' XP';
+    let msg = (isPerfect ? '✓ Perfect! +' : '✓ Korrekt! +') + gained + ' XP';
+    if (mult > 1) msg += ' ×' + mult + ' Combo!';
+    els.feedbackMsg.textContent = msg;
     els.feedbackMsg.className = 'feedback-msg ok';
+
+    // Achievements
+    checkChallengeAchievements(ch);
   } else {
+    // Review mode: correct without hints → increment correctCount
+    if (isReviewMode && hintsUsed === 0) {
+      const s = getStats(ch.id);
+      s.correctCount++;
+      if (s.correctCount >= 3 && !s.mastered) {
+        s.mastered = true;
+        saveState();
+        checkAchievement('first_mastered');
+        checkAllMasteredW1();
+      } else {
+        saveState();
+      }
+    }
     els.feedbackMsg.textContent = '✓ Korrekt! (bereits abgeschlossen)';
     els.feedbackMsg.className = 'feedback-msg ok';
   }
@@ -642,6 +1075,16 @@ function onWrong() {
   els.editor.classList.add('shake');
   els.feedbackMsg.textContent = '✗ Noch nicht ganz. Vergleiche Output und Erwartet.';
   els.feedbackMsg.className = 'feedback-msg bad';
+  breakCombo();
+
+  // Record wrong attempt
+  if (current) {
+    const ch = challengeAt(current.world, current.index);
+    recordChallengeResult(ch.id, false, hintsUsed > 0);
+    // In review mode: immediately offer LLM prompt on first wrong attempt
+    if (isReviewMode) showLLMPromptBtn(ch);
+  }
+
   if (navigator.vibrate) navigator.vibrate(80);
 }
 
@@ -690,6 +1133,10 @@ function showNextHint() {
   const exp = els.hintArea.querySelector('.explanation');
   if (exp) els.hintArea.insertBefore(item, exp); else els.hintArea.appendChild(item);
   hintsUsed++;
+
+  // Hints break combo
+  breakCombo();
+
   updateHintCount(ch);
 }
 
@@ -710,22 +1157,31 @@ function revealSolution() {
   sol.innerHTML = '<span class="hint-num">Lösung</span>So sieht eine korrekte Lösung aus:<code></code>';
   sol.querySelector('code').textContent = ch.solution;
 
-  if (ch.type === 'xslt') {
-    els.editor.value = wrapXsltSolution(ch.solution);
+  if (ch.type === 'xslt2') {
+    els.editor.value = wrapXsltSolution(ch.solution, '2.0');
+  } else if (ch.type === 'xslt') {
+    els.editor.value = wrapXsltSolution(ch.solution, '1.0');
   } else if (ch.type !== 'explain') {
     els.editor.value = ch.solution;
   }
+
+  // Show LLM prompt after solution revealed
+  showLLMPromptBtn(ch);
 }
 
-function wrapXsltSolution(body) {
+function wrapXsltSolution(body, version) {
+  version = version || '1.0';
   if (body.includes('<xsl:stylesheet')) return body;
-  const isTopLevel = /<xsl:template|<xsl:key/.test(body);
+  const isTopLevel = /<xsl:template|<xsl:key|<xsl:function/.test(body);
+  const nsExtra = version === '2.0'
+    ? '\n  xmlns:xs="http://www.w3.org/2001/XMLSchema"\n  xmlns:local="http://local"\n  exclude-result-prefixes="tei xs local"'
+    : '';
   const indent = s => s.split('\n').map(l => '  ' + l).join('\n');
   if (isTopLevel) {
     return `<?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet version="1.0"
+<xsl:stylesheet version="${version}"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-  xmlns:tei="http://www.tei-c.org/ns/1.0">
+  xmlns:tei="http://www.tei-c.org/ns/1.0"${nsExtra}>
 
   <xsl:output method="html"/>
 
@@ -734,9 +1190,9 @@ ${indent(body)}
 </xsl:stylesheet>`;
   }
   return `<?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet version="1.0"
+<xsl:stylesheet version="${version}"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-  xmlns:tei="http://www.tei-c.org/ns/1.0">
+  xmlns:tei="http://www.tei-c.org/ns/1.0"${nsExtra}>
 
   <xsl:output method="html"/>
 
@@ -748,10 +1204,114 @@ ${body.split('\n').map(l => '    ' + l).join('\n')}
 }
 
 // ============================================================
+//  Feature 5: Achievements
+// ============================================================
+function checkChallengeAchievements(ch) {
+  // first_xpath: first XPath challenge correct
+  if (ch.world === 1) checkAchievement('first_xpath');
+
+  // no_hints_world1: world 1 done, count hints used across world 1
+  if (ch.world === 1 && isWorldDone(1)) {
+    const anyHints = worldChallenges(1).some(c => {
+      const s = state.challengeStats[c.id];
+      return s && s.hintsUsed > 0;
+    });
+    if (!anyHints) checkAchievement('no_hints_world1');
+  }
+
+  // world3_done, world4_done
+  if (ch.world === 3 && isWorldDone(3)) checkAchievement('world3_done');
+  if (ch.world === 4 && isWorldDone(4)) checkAchievement('world4_done');
+}
+
+function checkAllMasteredW1() {
+  const allMastered = worldChallenges(1).every(c => isMastered(c.id));
+  if (allMastered) checkAchievement('all_mastered_w1');
+}
+
+let achievementQueue = [];
+let achievementShowing = false;
+
+function checkAchievement(id) {
+  if (state.achievements.includes(id)) return;
+  state.achievements.push(id);
+  saveState();
+  achievementQueue.push(id);
+  if (!achievementShowing) processAchievementQueue();
+  updateAchievementBtn();
+}
+
+function processAchievementQueue() {
+  if (achievementQueue.length === 0) { achievementShowing = false; return; }
+  achievementShowing = true;
+  const id = achievementQueue.shift();
+  showAchievementUnlock(id);
+}
+
+function showAchievementUnlock(id) {
+  const def = ACHIEVEMENTS.find(a => a.id === id);
+  if (!def) { processAchievementQueue(); return; }
+
+  els.achievementUnlockIcon.textContent = def.icon;
+  els.achievementUnlockName.textContent = def.name;
+  els.achievementUnlockDesc.textContent = def.desc;
+  els.achievementOverlay.hidden = false;
+
+  // Auto-dismiss after 3s
+  const timer = setTimeout(() => closeAchievementOverlay(), 3000);
+  els.achievementOverlay.onclick = () => { clearTimeout(timer); closeAchievementOverlay(); };
+}
+
+function closeAchievementOverlay() {
+  els.achievementOverlay.hidden = true;
+  els.achievementOverlay.onclick = null;
+  // Small delay before showing next
+  setTimeout(processAchievementQueue, 400);
+}
+
+function updateAchievementBtn() {
+  // Glow when new achievements exist (simple: always show count)
+  const count = state.achievements.length;
+  els.achievementBtn.title = '🏆 Achievements (' + count + '/' + ACHIEVEMENTS.length + ')';
+}
+
+function renderAchievementModal() {
+  els.achievementGrid.innerHTML = '';
+  ACHIEVEMENTS.forEach(def => {
+    const unlocked = state.achievements.includes(def.id);
+    const badge = document.createElement('div');
+    badge.className = 'achievement-badge ' + (unlocked ? 'unlocked' : 'locked');
+    badge.innerHTML =
+      '<div class="achievement-badge-icon">' + def.icon + '</div>' +
+      '<div class="achievement-badge-info">' +
+        '<div class="achievement-badge-name">' + escapeHtml(def.name) + '</div>' +
+        '<div class="achievement-badge-desc">' + escapeHtml(def.desc) + '</div>' +
+      '</div>';
+    els.achievementGrid.appendChild(badge);
+  });
+  els.achievementModal.hidden = false;
+}
+
+// ============================================================
 //  Navigation
 // ============================================================
 function goNext() {
   if (!current) return;
+
+  // Review mode: go to next in queue, or end
+  if (isReviewMode) {
+    if (reviewQueue.length > 0) {
+      const next = reviewQueue.shift();
+      openChallenge(next.world, next.index);
+    } else {
+      // Review done
+      isReviewMode = false;
+      showScreen('world');
+      renderWorldSelect();
+    }
+    return;
+  }
+
   const total = worldChallenges(current.world).length;
   if (current.index + 1 < total) {
     openChallenge(current.world, current.index + 1);
@@ -764,7 +1324,11 @@ function goNext() {
 function showWorldDone(world) {
   const next = world + 1;
   els.worldDoneTitle.textContent = WORLD_META[world].name + ' abgeschlossen!';
-  let txt = 'Alle 12 Challenges gelöst. Aktueller Stand: ⚡ ' + state.xp + ' XP · 🔥 ' + state.streak + ' Streak.';
+  const mastered = worldMasteredCount(world);
+  const total = worldChallenges(world).length;
+  let txt = 'Alle ' + total + ' Challenges gelöst. ⚡ ' + state.xp + ' XP';
+  if (mastered > 0) txt += ' · ⭐ ' + mastered + '/' + total + ' gemeistert';
+  txt += '.';
   if (next <= MAX_WORLD) {
     txt += ' Welt ' + next + ' (' + WORLD_META[next].name + ') ist jetzt freigeschaltet!';
   } else {
@@ -777,20 +1341,36 @@ function showWorldDone(world) {
 // ============================================================
 //  UI-Helfer
 // ============================================================
-function updateStatsUI() { els.xp.textContent = state.xp; els.streak.textContent = state.streak; }
+function updateStatsUI() {
+  els.xp.textContent = state.xp;
+  els.streak.textContent = state.streak;
+  updateComboUI();
+}
 function pulseStat(el) {
   if (!el) return;
   el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
 }
-function floatXP(amount) {
+function floatXP(amount, mult) {
   const f = document.createElement('div');
   f.className = 'xp-float';
   f.textContent = '+' + amount + ' XP';
-  const r = (els.runBtn.hidden ? els.nextBtn : els.runBtn).getBoundingClientRect();
+  const refBtn = els.runBtn.hidden ? els.nextBtn : els.runBtn;
+  const r = refBtn.getBoundingClientRect();
   f.style.left = (r.left + r.width / 2 - 30) + 'px';
   f.style.top = (r.top - 10) + 'px';
   els.xpFloatLayer.appendChild(f);
   setTimeout(() => f.remove(), 1200);
+
+  // Combo float if multiplier active
+  if (mult && mult > 1) {
+    const cf = document.createElement('div');
+    cf.className = 'combo-float';
+    cf.textContent = mult + '× 🔥';
+    cf.style.left = (r.left + r.width / 2 + 40) + 'px';
+    cf.style.top = (r.top - 10) + 'px';
+    els.xpFloatLayer.appendChild(cf);
+    setTimeout(() => cf.remove(), 1200);
+  }
 }
 
 // ----------------------------- Utils -----------------------------
@@ -849,8 +1429,14 @@ function prettyHtml(html) {
 //  Events
 // ============================================================
 function wireEvents() {
-  $('brandHome').addEventListener('click', () => { showScreen('world'); renderWorldSelect(); });
-  $('backBtn').addEventListener('click', () => { showScreen('world'); renderWorldSelect(); });
+  $('brandHome').addEventListener('click', () => {
+    isReviewMode = false;
+    showScreen('world'); renderWorldSelect();
+  });
+  $('backBtn').addEventListener('click', () => {
+    isReviewMode = false;
+    showScreen('world'); renderWorldSelect();
+  });
   els.runBtn.addEventListener('click', runChallenge);
   els.hintBtn.addEventListener('click', showNextHint);
   els.solutionBtn.addEventListener('click', revealSolution);
@@ -858,10 +1444,19 @@ function wireEvents() {
   els.worldDoneBtn.addEventListener('click', () => {
     els.worldDoneOverlay.hidden = true; showScreen('world'); renderWorldSelect();
   });
+  els.reviewBtn.addEventListener('click', startReviewMode);
+
   $('resetBtn').addEventListener('click', () => {
-    if (confirm('Gesamten Fortschritt (XP, Streak, gelöste Challenges, gesehene Konzept-Karten) zurücksetzen?')) {
-      state = defaultState(); saveState(); showScreen('world'); renderWorldSelect();
+    if (confirm('Gesamten Fortschritt (XP, Streak, gelöste Challenges, Achievements) zurücksetzen?')) {
+      state = defaultState(); saveState(); isReviewMode = false; showScreen('world'); renderWorldSelect();
     }
+  });
+
+  // Achievements
+  els.achievementBtn.addEventListener('click', renderAchievementModal);
+  $('achievementModalClose').addEventListener('click', () => { els.achievementModal.hidden = true; });
+  els.achievementModal.addEventListener('click', e => {
+    if (e.target === els.achievementModal) els.achievementModal.hidden = true;
   });
 
   els.editor.addEventListener('keydown', e => {
@@ -879,7 +1474,7 @@ function wireEvents() {
     const inEditor = document.activeElement === els.editor;
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runChallenge(); return; }
     if (!inEditor) {
-      if (e.key === 'h' || e.key === 'H') { e.preventDefault(); showNextHint(); }
+      if ((e.key === 'h' || e.key === 'H') && !isReviewMode) { e.preventDefault(); showNextHint(); }
       if (e.key === 'ArrowRight' && !els.nextBtn.hidden) { e.preventDefault(); goNext(); }
     }
   });
@@ -890,7 +1485,11 @@ function init() {
   if (!window.fontoxpath) {
     alert('FontoxPath konnte nicht geladen werden (CDN). Bitte Internetverbindung prüfen und neu laden.');
   }
+  if (!window.SaxonJS) {
+    console.warn('SaxonJS nicht geladen — XSLT-2.0-Challenges werden Fehlermeldung zeigen. CDN-Verbindung prüfen.');
+  }
   wireEvents();
+  updateComboUI();
   renderWorldSelect();
   showScreen('world');
 }
@@ -899,9 +1498,12 @@ document.addEventListener('DOMContentLoaded', init);
 // Debug-/Test-Hook
 window.wegaLearn = {
   open: openChallenge,
-  openDirect: _doOpenChallenge,  // bypasses concept card gate
+  openDirect: _doOpenChallenge,
   run: runChallenge,
   state: () => state,
   challenges: () => window.CHALLENGES,
-  wrapXslt: wrapXsltSolution
+  wrapXslt: wrapXsltSolution,
+  checkAchievement,
+  buildReviewQueue,
+  startReview: startReviewMode
 };

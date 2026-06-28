@@ -17,7 +17,13 @@
       "",
       "Beispiel:",
       "  //tei:persName/string()  →  [\"Weber\", \"Brandt\"]"
-    ]
+    ],
+    "sandbox": {
+      "type": "xpath",
+      "fixture": "letter_001",
+      "placeholder": "//tei:",
+      "hint": "Probier //tei:persName"
+    }
   },
   "1:Predicates": {
     "title": "Predicates",
@@ -36,7 +42,13 @@
       "",
       "Beispiel:",
       "  //tei:note[@type='commentary']  →  Kommentar-Notizen"
-    ]
+    ],
+    "sandbox": {
+      "type": "xpath",
+      "fixture": "letter_001",
+      "placeholder": "//tei:note[@type=",
+      "hint": "Probier //tei:note[@type='commentary']"
+    }
   },
   "1:Achsen und Funktionen": {
     "title": "Achsen und Funktionen",
@@ -73,7 +85,13 @@
       "",
       "Auch ein einzelner Funktionsaufruf ist gültiges XQuery:",
       "  distinct-values(//tei:note/@type)"
-    ]
+    ],
+    "sandbox": {
+      "type": "flwor",
+      "fixture": "letter_001",
+      "placeholder": "for $p in //tei:",
+      "hint": "Probier: for $p in //tei:persName return string($p)"
+    }
   },
   "2:let": {
     "title": "let und where",
@@ -90,7 +108,13 @@
       "",
       "Unterschied: for iteriert, let berechnet, where filtert.",
       "let kann auch innerhalb von for stehen (pro Iteration)."
-    ]
+    ],
+    "sandbox": {
+      "type": "flwor",
+      "fixture": "letter_001",
+      "placeholder": "let $x := ",
+      "hint": "Probier: let $s := //tei:correspAction[@type='sent']//tei:persName[1] return string($s)"
+    }
   },
   "2:where": {
     "title": "where",
@@ -614,6 +638,32 @@
       "",
       "4. map{} für JSON-ähnliche Rückgabe:",
       "   map { 'id': $id, 'title': $title }"
+    ]
+  },
+  "4:XSLT 2.0": {
+    "title": "XSLT 2.0 — Jetzt mit Saxon",
+    "icon": "🚀",
+    "lines": [
+      "Du wechselst jetzt auf den Saxon-Prozessor — denselben",
+      "den die WeGA wirklich nutzt.",
+      "",
+      "XSLT 2.0 fühlt sich anders an: echte Funktionen,",
+      "echte Regex, keine Hacks mehr.",
+      "",
+      "xsl:function   → wie eine Funktion in jeder Sprache",
+      "  declare function local:name($p as element()) as xs:string",
+      "",
+      "xsl:for-each-group → Gruppieren ohne Muenchian-Tricks",
+      "  group-by=\"@type\"  current-group()  current-grouping-key()",
+      "",
+      "matches() replace() → reguläre Ausdrücke in XPath",
+      "  replace($d, '(\\d{4})-(\\d{2})-(\\d{2})', '$3.$2.$1')",
+      "",
+      "string-join()  → kein concat()-Gefummel mehr",
+      "  string-join(//tei:persName/string(), ', ')",
+      "",
+      "Stylesheet-Header bleibt fast gleich — nur version=\"2.0\"",
+      "und xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" dazu."
     ]
   }
 }
