@@ -9,7 +9,8 @@ const worldFiles = [
   'world2-flwor.json',
   'world3-xslt.json',
   'world4-wega.json',
-  'world5-existdb.json'
+  'world5-existdb.json',
+  'world6-wega-projekt.json'
 ];
 const data = {};
 for (const f of worldFiles){

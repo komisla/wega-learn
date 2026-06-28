@@ -1,0 +1,218 @@
+[
+  {
+    "id": "w6c01",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Dokumenttypen der WeGA",
+    "task": "Die WeGA verwaltet ihre Inhalte als unterschiedliche Dokumenttypen (im Code: WeGA Document Types, wdt). Welcher davon ist KEIN eigenständiger Dokumenttyp der WeGA?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "Briefe (letters)",
+      "Schriften (writings)",
+      "Reiseberichte (travel reports)",
+      "Tagebücher (diaries)"
+    ],
+    "correct": 2,
+    "explanation": "Die WeGA modelliert ihre Daten als feste Liste von Dokumenttypen, u. a. Briefe (letters), Schriften (writings), Werke (works), Tagebücher (diaries), Personen (persons), Orte (places), Organisationen (orgs), Quellen (sources) und Bibliographie (biblio). Reiseberichte gibt es nicht als eigenen Typ — Webers Reisen sind in den Tagebüchern (diaries) und in Briefen dokumentiert. Jeder Dokumenttyp ist im Modul wdt.xqm als eigene Funktion definiert (z. B. wdt:letters, wdt:diaries) und kapselt Filter-, Sortier- und Titellogik objektorientiert in einer XQuery-Map.",
+    "conceptTag": "WeGA-Dokumenttypen"
+  },
+  {
+    "id": "w6c02",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Inhalt eines WeGA-Briefs",
+    "task": "Ein WeGA-Brief ist ein TEI-Dokument. Welches der folgenden Elemente gehört NICHT zur typischen Kodierung eines WeGA-Briefs?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "tei:correspDesc mit correspAction für Absender und Empfänger",
+      "tei:persName mit @key zur Verknüpfung mit dem Personenregister",
+      "mei:score mit dem vollständigen Notentext des Briefes",
+      "tei:note für Kommentar und textkritische Anmerkungen"
+    ],
+    "correct": 2,
+    "explanation": "Ein Brief enthält im teiHeader eine tei:correspDesc mit tei:correspAction (sent/received), die Absender, Empfänger, Ort und Datum festhält. Im Text stehen tei:persName/@key (Verknüpfung zum Personenregister), textkritische Auszeichnung (tei:add, tei:del, tei:choice) sowie tei:note für Sach- und Editionskommentar. mei:score gehört dagegen NICHT in einen Brief — MEI (Music Encoding Initiative) kodiert Musiknoten und wird in der WeGA für Notenbeispiele in Werken bzw. den Quellen verwendet, nicht im Brieffließtext.",
+    "conceptTag": "WeGA-Dokumenttypen"
+  },
+  {
+    "id": "w6c03",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "WeGA-IDs und ihr Präfix",
+    "task": "WeGA-IDs folgen dem Muster A + sechs Hexadezimalstellen (Regex A[0-9A-F]{6}). Der dreistellige Anfang verrät den Dokumenttyp. Welche Zuordnung ist korrekt?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "A04xxxx = Briefe, A00xxxx = Personen, A02xxxx = Werke",
+      "A04xxxx = Personen, A00xxxx = Briefe, A02xxxx = Tagebücher",
+      "A04xxxx = Werke, A00xxxx = Orte, A02xxxx = Briefe",
+      "Das Präfix ist bedeutungslos, IDs werden fortlaufend vergeben"
+    ],
+    "correct": 0,
+    "explanation": "Die WeGA-ID kodiert den Dokumenttyp im Präfix. Laut den IdPattern-Einträgen in options.xml gilt: A04 = Briefe (lettersIdPattern), A00 = Personen (personsIdPattern), A02 = Werke (worksIdPattern), A03 = Schriften, A06 = Tagebücher, A08 = Organisationen, A13 = Orte. Beispiele: A040001 ist ein Brief, A002078 eine Person. Die Stellen sind hexadezimal (0–9, A–F), nicht dezimal — deshalb sind IDs wie A04ABCD gültig. Aus der ID allein erkennt das System per wdt:check, zu welchem Dokumenttyp ein Dokument gehört.",
+    "conceptTag": "WeGA-Dokumenttypen"
+  },
+  {
+    "id": "w6c04",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "correspAction: sent vs. received",
+    "task": "In tei:correspDesc beschreibt tei:correspAction die Kommunikationshandlung. Was ist der Unterschied zwischen @type=\"sent\" und @type=\"received\"?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "sent steht für gedruckte, received für handschriftliche Briefe",
+      "sent beschreibt die Absende-Seite (Absender, Absendeort, Absendedatum), received die Empfangs-Seite (Empfänger, Empfangsort)",
+      "sent bedeutet, der Brief wurde verschickt, received, dass er verloren ging",
+      "Beide sind gleichbedeutend, received ist nur die ältere Schreibweise"
+    ],
+    "correct": 1,
+    "explanation": "tei:correspAction bündelt die Beteiligten und Umstände einer Briefhandlung. @type=\"sent\" enthält Absender (tei:persName/@key), Absendeort (tei:placeName) und Absendedatum (tei:date/@when); @type=\"received\" das Gegenstück mit Empfänger und Empfangsort. Im WeGA-Code wird genau so darauf zugegriffen, etwa correspAction[@type='sent']//tei:persName/@key, um Absender zu finden, oder correspAction[@type='sent']/tei:date für den Brieftitel und die chronologische Sortierung. Diese saubere Trennung erlaubt Abfragen wie 'alle Briefe von Person X' oder 'alle Briefe nach Detmold'.",
+    "conceptTag": "TEI-Kodierung"
+  },
+  {
+    "id": "w6c05",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Textkritik: add/del und corr/sic",
+    "task": "Die WeGA zeichnet textkritische Phänomene mit TEI aus. Welche Beschreibung der Paare tei:add/tei:del und tei:corr/tei:sic ist korrekt?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "add/del beschreiben Eingriffe des Editors, corr/sic Eingriffe des Autors",
+      "add = vom Autor Hinzugefügtes, del = vom Autor Getilgtes; corr = Korrektur des Editors, sic = beibehaltene fehlerhafte Originalform",
+      "add und corr fügen Text hinzu, del und sic löschen ihn — der Unterschied ist rein stilistisch",
+      "Alle vier Elemente sind austauschbar und nur für die Darstellung relevant"
+    ],
+    "correct": 1,
+    "explanation": "tei:add und tei:del dokumentieren Eingriffe in der Quelle selbst: tei:add ist vom Schreiber Hinzugefügtes (z. B. eine Einfügung über der Zeile), tei:del von ihm Getilgtes (Durchgestrichenes). tei:corr und tei:sic gehören zur editorischen Ebene und stehen meist gemeinsam in einem tei:choice: tei:sic bewahrt die (fehlerhafte) Originalschreibung, tei:corr bietet die vom Editor korrigierte Lesart. In der Leseansicht zeigt die WeGA typischerweise tei:corr und unterdrückt tei:sic, während tei:del oft ausgeblendet und tei:add-Inhalt beibehalten wird. Wichtig: add/del = Autor/Schreiber, corr/sic = Editor.",
+    "conceptTag": "TEI-Kodierung"
+  },
+  {
+    "id": "w6c06",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "persName mit @key statt Klartext",
+    "task": "Im Brieftext steht <persName key=\"A002078\">Lina</persName> statt nur 'Lina'. Was ist der Hauptvorteil dieser Verknüpfung über @key?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "Der Name wird dadurch automatisch fett dargestellt",
+      "Jede Namensvariante wird über die stabile @key-ID eindeutig mit einem Eintrag im Personenregister verknüpft, was Normalisierung, Verlinkung und Register ermöglicht",
+      "@key verschlüsselt den Namen aus Datenschutzgründen",
+      "@key ist nur eine interne Notiz und hat keine technische Funktion"
+    ],
+    "correct": 1,
+    "explanation": "Personen treten im Text unter vielen Namensvarianten auf ('Lina', 'Caroline', 'Caroline Brandt', 'meine Frau'). Der @key (z. B. A002078) verweist auf den normierten Personeneintrag (persons), unabhängig von der Schreibung an der Fundstelle. Das ermöglicht drei Dinge: Normalisierung (alle Varianten zeigen auf eine Identität), Verlinkung (jeder Name wird zu /A002078 verlinkt) und Register/Abfragen ('alle Dokumente, die diese Person erwähnen'). Im WeGA-Code laufen genau darüber Abfragen wie correspAction//tei:persName/@key = 'A002078' und die API-Felder name/docID/uri für verknüpfte Entitäten.",
+    "conceptTag": "TEI-Kodierung"
+  },
+  {
+    "id": "w6c07",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Was ist MEI?",
+    "task": "Neben TEI nutzt die WeGA auch MEI. Was ist MEI und worin unterscheidet es sich von TEI?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "MEI (Metadata Encoding Initiative) ersetzt TEI vollständig für alle WeGA-Dokumente",
+      "MEI (Music Encoding Initiative) ist ein XML-Standard zur Kodierung von Musiknotation, während TEI Text kodiert",
+      "MEI ist ein Bildformat für eingescannte Notenblätter",
+      "MEI ist eine Datenbank-Engine, TEI eine Auszeichnungssprache"
+    ],
+    "correct": 1,
+    "explanation": "MEI steht für Music Encoding Initiative und ist ein XML-Standard zur maschinenlesbaren Kodierung von Musiknotation — Noten, Takte, Stimmen, Vorzeichen, dynamische Angaben. TEI (Text Encoding Initiative) kodiert dagegen Text. Beide sind XML-basiert und teilen eine ähnliche editorische Philosophie. In der WeGA werden Briefe und Schriften in TEI kodiert, musikalische Notenbeispiele in MEI. Im Code sieht man beide Namespaces nebeneinander deklariert: tei=\"http://www.tei-c.org/ns/1.0\" und mei=\"http://www.music-encoding.org/ns/mei\".",
+    "conceptTag": "MEI"
+  },
+  {
+    "id": "w6c08",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "MEI-Hierarchie",
+    "task": "MEI-Notentext ist hierarchisch aufgebaut: score → section → measure → staff → layer → note. Welche Zuordnung dieser Ebenen zur Musik ist korrekt?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "measure = ein Notensystem, staff = ein einzelner Takt, note = eine ganze Stimme",
+      "measure = ein Takt, staff = eine Notenzeile/ein Instrument, layer = eine Stimme innerhalb des Systems, note = eine einzelne Note",
+      "section = eine einzelne Note, measure = das gesamte Stück, note = ein Taktstrich",
+      "score und section sind identisch, staff bezeichnet die Tonhöhe"
+    ],
+    "correct": 1,
+    "explanation": "Die MEI-Hierarchie bildet die Notenseite ab: mei:score ist die gesamte Partitur, mei:section ein zusammenhängender Abschnitt, mei:measure ein Takt. Innerhalb eines Taktes steht je mei:staff für eine Notenzeile (typischerweise ein Instrument oder eine Hand am Klavier). Ein mei:staff kann mehrere mei:layer enthalten — das sind unabhängige Stimmen im selben System (z. B. Melodie und Begleitung). Ganz unten steht mei:note für die einzelne Note mit Tonhöhe (@pname, @oct) und Dauer (@dur). Diese Schachtelung erlaubt es, jede Note über ihren Kontext (Takt, Stimme, System) präzise zu adressieren.",
+    "conceptTag": "MEI"
+  },
+  {
+    "id": "w6c09",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Warum MEI statt MusicXML?",
+    "task": "Für die wissenschaftliche Edition wählt die WeGA MEI statt MusicXML. Was ist der entscheidende Grund?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "MusicXML kann keine Noten darstellen, MEI schon",
+      "MEI ist für wissenschaftliche Editionen ausgelegt: es unterstützt textkritisches Markup (Lesarten, Varianten, Quellenbezug) und teilt die TEI-nahe Editionsphilosophie, während MusicXML primär auf Notensatz und Programm-Austausch zielt",
+      "MEI ist proprietär und daher zuverlässiger als das offene MusicXML",
+      "MusicXML ist veraltet und wird nicht mehr weiterentwickelt"
+    ],
+    "correct": 1,
+    "explanation": "MusicXML ist als Austauschformat zwischen Notensatzprogrammen (Finale, Sibelius, MuseScore) entworfen — sein Ziel ist die korrekte grafische Wiedergabe. MEI ist dagegen für die wissenschaftliche Edition gebaut: Es kann Lesarten und Varianten verschiedener Quellen, editorische Eingriffe und den Bezug zu konkreten Handschriften/Drucken auszeichnen — also genau das textkritische Markup, das eine Gesamtausgabe wie die WeGA braucht. Zudem folgt MEI derselben Philosophie wie TEI (community-getrieben, editionsorientiert, mit teiHeader-ähnlichen Metadaten), was die Integration beider Formate im selben Projekt erleichtert.",
+    "conceptTag": "MEI"
+  },
+  {
+    "id": "w6c10",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Rendering-Pipeline einer WeGA-Seite",
+    "task": "Ein Nutzer ruft eine WeGA-Briefseite im Browser auf. In welcher Reihenfolge entsteht das HTML?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "HTTP-Request → eXist-db → XQuery (controller/Modul lädt TEI) → XSLT-Transformation → HTML an den Browser",
+      "HTTP-Request → XSLT → XQuery → eXist-db → HTML",
+      "HTTP-Request → PHP → MySQL → JavaScript-Rendering im Browser",
+      "Der Browser lädt die TEI-XML direkt und rendert sie ohne Server-Verarbeitung"
+    ],
+    "correct": 0,
+    "explanation": "Die WeGA-WebApp läuft in eXist-db, einer XML-Datenbank mit eingebautem Webserver. Ablauf: Der HTTP-Request trifft auf den controller.xql, der die URL auf eine Funktion mappt. XQuery-Module (z. B. app.xqm, wdt.xqm) laden das passende TEI-Dokument per doc()/collection() aus der Datenbank. Die TEI-Fragmente werden dann per XSLT (wega-util:transform mit Stylesheets wie common_main.xsl oder works.xsl) in HTML umgewandelt. Das fertige HTML geht zurück an den Browser. Es gibt keine separate relationale Datenbank und keine PHP-Schicht — XQuery und XSLT erledigen Datenzugriff und Transformation innerhalb von eXist-db.",
+    "conceptTag": "WeGA-Architektur"
+  },
+  {
+    "id": "w6c11",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Die WeGA-API",
+    "task": "Was liefert ein Aufruf wie https://weber-gesamtausgabe.de/api/v1/documents/A040001.json (bzw. der entsprechende Endpunkt)?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "Die rohe TEI-XML-Datei als Download",
+      "Strukturierte Metadaten zum Dokument als JSON — u. a. ID, Titel, Permalink (uri) sowie verknüpfte Entitäten (Absender, Empfänger, Orte) mit name, docID, uri und rel",
+      "Eine fertig gerenderte HTML-Seite",
+      "Nur den reinen Brieftext ohne jede Auszeichnung"
+    ],
+    "correct": 1,
+    "explanation": "Die WeGA stellt eine versionierte REST-API bereit (api/v1, definiert über controller.xql und das Modul api.xqm). Der documents-Endpunkt liefert maschinenlesbare Metadaten als JSON. Pro Dokument enthält die Antwort u. a. eine ID, den Titel und einen Permalink (uri); für Briefe kommen die verknüpften Entitäten hinzu — Absender, Empfänger und Orte, jeweils als Objekt mit name, docID, uri und rel (z. B. 'sender', 'recipient', 'place_of_sender'). Erzeugt wird das aus der XQuery-Map serialize(..., map{'method':'json'}). Die API trennt so Daten von Darstellung: HTML ist für Menschen, JSON für Maschinen und Drittsysteme.",
+    "conceptTag": "WeGA-Architektur"
+  },
+  {
+    "id": "w6c12",
+    "world": 6,
+    "worldName": "WeGA Projekt",
+    "title": "Warum eine XML-Datenbank?",
+    "task": "Die WeGA speichert ihre Daten in eXist-db (XML-Datenbank) statt in einer relationalen Datenbank wie PostgreSQL. Was ist der entscheidende Vorteil für dieses Projekt?",
+    "type": "explain",
+    "fixture": null,
+    "options": [
+      "eXist-db ist generell schneller als jede relationale Datenbank",
+      "Die Daten sind von Natur aus hierarchisches, tief verschachteltes XML (TEI/MEI). eXist-db speichert und durchsucht dieses XML nativ mit XQuery/XPath und Volltext-Index, ohne es in flache Tabellen zerlegen zu müssen",
+      "PostgreSQL kann kein UTF-8 und keine Sonderzeichen speichern",
+      "eXist-db braucht kein Schema, PostgreSQL erzwingt für jedes Feld eines"
+    ],
+    "correct": 1,
+    "explanation": "TEI- und MEI-Dokumente sind tief verschachtelte Bäume mit gemischtem Inhalt (Text und Elemente durcheinander, beliebige Schachtelung von tei:choice, tei:add, mei:layer usw.). Eine relationale Datenbank wie PostgreSQL müsste diese Struktur in flache Tabellen mit vielen Joins zerlegen (object-relational impedance mismatch) — aufwendig und verlustbehaftet bei mixed content. eXist-db speichert das XML nativ und erlaubt Abfragen direkt in der Sprache der Daten: XQuery und XPath (//tei:correspAction[@type='sent']), inklusive Lucene-Volltextindex über ft:query. Dieselbe Datenbank liefert zudem die Web-Anwendung aus. PostgreSQL kann zwar XML/JSON, aber die Abfrage hierarchischer Editionsdaten wäre deutlich umständlicher und langsamer.",
+    "conceptTag": "WeGA-Architektur"
+  }
+]

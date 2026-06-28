@@ -17,12 +17,13 @@ const WORLD_META = {
   2: { icon: '⚗️', name: 'FLWOR Forge',      tech: 'XQuery / FLWOR' },
   3: { icon: '🔧', name: 'XSLT Basics',      tech: 'XSLT 1.0' },
   4: { icon: '🏛️', name: 'WeGA Patterns',    tech: 'XSLT 1.0 + 2.0' },
-  5: { icon: '🗄️', name: 'eXist-db Query',  tech: 'XQuery + eXist-db' }
+  5: { icon: '🗄️', name: 'eXist-db Query',  tech: 'XQuery + eXist-db' },
+  6: { icon: '🏰', name: 'WeGA Projekt',     tech: 'TEI · MEI · eXist-db' }
 };
-const MAX_WORLD = 5;
+const MAX_WORLD = 6;
 
 const WORLD_TECH_LABEL = {
-  1: 'XPath', 2: 'FLWOR', 3: 'XSLT 1.0', 4: 'XSLT 2.0', 5: 'XQuery in eXist-db'
+  1: 'XPath', 2: 'FLWOR', 3: 'XSLT 1.0', 4: 'XSLT 2.0', 5: 'XQuery in eXist-db', 6: 'WeGA Praxis'
 };
 
 const XSLT_STARTER =
@@ -611,11 +612,12 @@ function setupExplainUI(ch) {
 }
 
 function handleMCAnswer(ch, chosen, panel) {
-  const correct = chosen === ch.correctOption;
+  const correctIdx = ch.correctOption !== undefined ? ch.correctOption : ch.correct;
+  const correct = chosen === correctIdx;
   attempts++;
   panel.querySelectorAll('.mc-option').forEach((btn, i) => {
     btn.disabled = true;
-    if (i === ch.correctOption) btn.classList.add('mc-correct');
+    if (i === correctIdx) btn.classList.add('mc-correct');
     else if (i === chosen && !correct) btn.classList.add('mc-wrong');
   });
 
@@ -708,7 +710,7 @@ function showLLMPromptBtn(ch) {
     if (ch.expectedType === 'number') expectedDesc = 'eine Zahl: ' + ch.expected;
     else if (ch.expectedType === 'stringArray') expectedDesc = 'ein Array mit ' + (ch.expected || []).length + ' Strings: ' + JSON.stringify(ch.expected || []);
     else if (ch.expectedType === 'html') expectedDesc = 'HTML-Ausgabe: ' + (ch.expected || '').slice(0, 200);
-    else if (ch.expectedType === 'choice') expectedDesc = 'Option ' + (ch.correctOption !== undefined ? String.fromCharCode(65 + ch.correctOption) : '?');
+    else if (ch.expectedType === 'choice') { const ci = ch.correctOption !== undefined ? ch.correctOption : ch.correct; expectedDesc = 'Option ' + (ci !== undefined ? String.fromCharCode(65 + ci) : '?'); }
     else if (ch.expectedType === 'write-only') expectedDesc = 'Selbsteinschätzung — Lösung ist im Stylesheet';
     else expectedDesc = '(kein erwarteter Wert)';
 
