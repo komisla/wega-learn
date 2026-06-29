@@ -1511,12 +1511,6 @@ function wireEvents() {
   });
   els.reviewBtn.addEventListener('click', startReviewMode);
 
-  $('resetBtn').addEventListener('click', () => {
-    if (confirm('Gesamten Fortschritt (XP, Streak, gelöste Challenges, Achievements) zurücksetzen?')) {
-      state = defaultState(); saveState(); isReviewMode = false; showScreen('world'); renderWorldSelect();
-    }
-  });
-
   // Achievements
   els.achievementBtn.addEventListener('click', renderAchievementModal);
   $('achievementModalClose').addEventListener('click', () => { els.achievementModal.hidden = true; });
@@ -1898,6 +1892,18 @@ function shuffleArray(arr) {
 }
 
 // ----------------------------- Init -----------------------------
+function cleanupOrphanedIds() {
+  const allIds = new Set(
+    Object.values(window.CHALLENGES).flat().map(c => c.id)
+  );
+  const before = state.completed.length;
+  state.completed = state.completed.filter(id => allIds.has(id));
+  Object.keys(state.challengeStats).forEach(id => {
+    if (!allIds.has(id)) delete state.challengeStats[id];
+  });
+  if (state.completed.length !== before) saveState();
+}
+
 function init() {
   if (!window.fontoxpath) {
     alert('FontoxPath konnte nicht geladen werden (CDN). Bitte Internetverbindung prüfen und neu laden.');
@@ -1905,6 +1911,7 @@ function init() {
   if (!window.SaxonJS) {
     console.warn('SaxonJS nicht geladen — XSLT-2.0-Challenges werden Fehlermeldung zeigen. CDN-Verbindung prüfen.');
   }
+  cleanupOrphanedIds();
   wireEvents();
   wireIntro();
   wireGlossary();
