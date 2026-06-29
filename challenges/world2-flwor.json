@@ -1,5 +1,24 @@
 [
   {
+    "id": "w2c00",
+    "world": 2,
+    "worldName": "FLWOR Forge",
+    "title": "Deine erste Schleife",
+    "task": "Schreibe eine for-Schleife über die Sequenz (10, 20, 30) und gib jeden Wert direkt zurück.",
+    "type": "flwor",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["10", "20", "30"],
+    "hints": [
+      "for $x in (...) return ... ist das Grundmuster — $x nimmt jeden Wert an.",
+      "In runden Klammern steht die Sequenz: (10, 20, 30).",
+      "for $x in (10, 20, 30) return $x"
+    ],
+    "solution": "for $x in (10, 20, 30) return $x",
+    "explanation": "for bindet jeden Wert der Sequenz nacheinander an $x und wertet return für jeden aus. Das Grundmuster gilt für Zahlen genauso wie für XML-Knoten — du übst es hier ohne Namespace-Komplexität.",
+    "conceptTag": "for/return"
+  },
+  {
     "id": "w2c01",
     "world": 2,
     "worldName": "FLWOR Forge",
@@ -64,6 +83,25 @@
     "conceptTag": "for/return"
   },
   {
+    "id": "w2c03b",
+    "world": 2,
+    "worldName": "FLWOR Forge",
+    "title": "let — Wert binden",
+    "task": "Binde den Ausdruck 6 * 7 an eine Variable $result und gib $result zurück.",
+    "type": "flwor",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["42"],
+    "hints": [
+      "let $x := ... bindet einen Wert an eine Variable — anders als for iteriert es nicht.",
+      "return gibt den Wert der Variable zurück.",
+      "let $result := 6 * 7 return $result"
+    ],
+    "solution": "let $result := 6 * 7 return $result",
+    "explanation": "let ist kein Iterator — es bindet einmalig einen Wert oder Ausdruck. Ideal für Zwischenergebnisse, damit man denselben Ausdruck nur einmal berechnet. Das XML-Fixture brauchst du hier noch nicht.",
+    "conceptTag": "let"
+  },
+  {
     "id": "w2c04",
     "world": 2,
     "worldName": "FLWOR Forge",
@@ -100,6 +138,44 @@
     "solution": "for $n in //tei:note where $n/@type = 'commentary' return string($n)",
     "explanation": "where ist das FLWOR-Pendant zum Predicate. Bei komplexen Bedingungen ist where oft lesbarer als ein langes [ ].",
     "conceptTag": "where"
+  },
+  {
+    "id": "w2c05b",
+    "world": 2,
+    "worldName": "FLWOR Forge",
+    "title": "for + let — Anfangsbuchstaben",
+    "task": "Iteriere über alle tei:persName. Binde mit let den Anfangsbuchstaben des Namens an $initial und gib nur diesen zurück.",
+    "type": "flwor",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["C", "C", "L", "F", "B", "C"],
+    "hints": [
+      "for iteriert, let berechnet pro Iteration einen Zwischenwert.",
+      "substring(string($p), 1, 1) liefert das erste Zeichen eines Strings.",
+      "for $p in //tei:persName let $initial := substring(string($p), 1, 1) return $initial"
+    ],
+    "solution": "for $p in //tei:persName let $initial := substring(string($p), 1, 1) return $initial",
+    "explanation": "for und let arbeiten hier zusammen: for iteriert, let berechnet pro Iteration einen Zwischenwert (den Anfangsbuchstaben) — damit muss man string($p) nur einmal schreiben statt zweimal. Das ist das Grundmuster für alle Verarbeitungsschritte innerhalb einer Schleife.",
+    "conceptTag": "for/let/where"
+  },
+  {
+    "id": "w2c05c",
+    "world": 2,
+    "worldName": "FLWOR Forge",
+    "title": "where statt Predicate",
+    "task": "Gib alle Werktitel (tei:rs[@type='work']) zurück — aber diesmal ohne Predicate in der for-Klausel, nur mit where.",
+    "type": "flwor",
+    "fixture": "letter_001",
+    "expectedType": "stringArray",
+    "expected": ["Freischütz", "Aufforderung zum Tanz"],
+    "hints": [
+      "for $r in //tei:rs iteriert ohne Filterung über alle tei:rs.",
+      "where $r/@type = 'work' filtert dann innerhalb der Schleife.",
+      "for $r in //tei:rs where $r/@type = 'work' return string($r)"
+    ],
+    "solution": "for $r in //tei:rs where $r/@type = 'work' return string($r)",
+    "explanation": "where ist das FLWOR-Äquivalent zum Predicate: //tei:rs[@type='work'] und for $r in //tei:rs where $r/@type='work' liefern dasselbe Ergebnis. Bei mehrteiligen Bedingungen (and/or) wird where deutlich lesbarer als ein langer Predicate.",
+    "conceptTag": "for/let/where"
   },
   {
     "id": "w2c06",

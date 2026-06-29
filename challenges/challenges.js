@@ -273,6 +273,29 @@ window.CHALLENGES = {
   ],
   "world2": [
     {
+      "id": "w2c00",
+      "world": 2,
+      "worldName": "FLWOR Forge",
+      "title": "Deine erste Schleife",
+      "task": "Schreibe eine for-Schleife über die Sequenz (10, 20, 30) und gib jeden Wert direkt zurück.",
+      "type": "flwor",
+      "fixture": "letter_001",
+      "expectedType": "stringArray",
+      "expected": [
+        "10",
+        "20",
+        "30"
+      ],
+      "hints": [
+        "for $x in (...) return ... ist das Grundmuster — $x nimmt jeden Wert an.",
+        "In runden Klammern steht die Sequenz: (10, 20, 30).",
+        "for $x in (10, 20, 30) return $x"
+      ],
+      "solution": "for $x in (10, 20, 30) return $x",
+      "explanation": "for bindet jeden Wert der Sequenz nacheinander an $x und wertet return für jeden aus. Das Grundmuster gilt für Zahlen genauso wie für XML-Knoten — du übst es hier ohne Namespace-Komplexität.",
+      "conceptTag": "for/return"
+    },
+    {
       "id": "w2c01",
       "world": 2,
       "worldName": "FLWOR Forge",
@@ -342,6 +365,27 @@ window.CHALLENGES = {
       "conceptTag": "for/return"
     },
     {
+      "id": "w2c03b",
+      "world": 2,
+      "worldName": "FLWOR Forge",
+      "title": "let — Wert binden",
+      "task": "Binde den Ausdruck 6 * 7 an eine Variable $result und gib $result zurück.",
+      "type": "flwor",
+      "fixture": "letter_001",
+      "expectedType": "stringArray",
+      "expected": [
+        "42"
+      ],
+      "hints": [
+        "let $x := ... bindet einen Wert an eine Variable — anders als for iteriert es nicht.",
+        "return gibt den Wert der Variable zurück.",
+        "let $result := 6 * 7 return $result"
+      ],
+      "solution": "let $result := 6 * 7 return $result",
+      "explanation": "let ist kein Iterator — es bindet einmalig einen Wert oder Ausdruck. Ideal für Zwischenergebnisse, damit man denselben Ausdruck nur einmal berechnet. Das XML-Fixture brauchst du hier noch nicht.",
+      "conceptTag": "let"
+    },
+    {
       "id": "w2c04",
       "world": 2,
       "worldName": "FLWOR Forge",
@@ -382,6 +426,54 @@ window.CHALLENGES = {
       "solution": "for $n in //tei:note where $n/@type = 'commentary' return string($n)",
       "explanation": "where ist das FLWOR-Pendant zum Predicate. Bei komplexen Bedingungen ist where oft lesbarer als ein langes [ ].",
       "conceptTag": "where"
+    },
+    {
+      "id": "w2c05b",
+      "world": 2,
+      "worldName": "FLWOR Forge",
+      "title": "for + let — Anfangsbuchstaben",
+      "task": "Iteriere über alle tei:persName. Binde mit let den Anfangsbuchstaben des Namens an $initial und gib nur diesen zurück.",
+      "type": "flwor",
+      "fixture": "letter_001",
+      "expectedType": "stringArray",
+      "expected": [
+        "C",
+        "C",
+        "L",
+        "F",
+        "B",
+        "C"
+      ],
+      "hints": [
+        "for iteriert, let berechnet pro Iteration einen Zwischenwert.",
+        "substring(string($p), 1, 1) liefert das erste Zeichen eines Strings.",
+        "for $p in //tei:persName let $initial := substring(string($p), 1, 1) return $initial"
+      ],
+      "solution": "for $p in //tei:persName let $initial := substring(string($p), 1, 1) return $initial",
+      "explanation": "for und let arbeiten hier zusammen: for iteriert, let berechnet pro Iteration einen Zwischenwert (den Anfangsbuchstaben) — damit muss man string($p) nur einmal schreiben statt zweimal. Das ist das Grundmuster für alle Verarbeitungsschritte innerhalb einer Schleife.",
+      "conceptTag": "for/let/where"
+    },
+    {
+      "id": "w2c05c",
+      "world": 2,
+      "worldName": "FLWOR Forge",
+      "title": "where statt Predicate",
+      "task": "Gib alle Werktitel (tei:rs[@type='work']) zurück — aber diesmal ohne Predicate in der for-Klausel, nur mit where.",
+      "type": "flwor",
+      "fixture": "letter_001",
+      "expectedType": "stringArray",
+      "expected": [
+        "Freischütz",
+        "Aufforderung zum Tanz"
+      ],
+      "hints": [
+        "for $r in //tei:rs iteriert ohne Filterung über alle tei:rs.",
+        "where $r/@type = 'work' filtert dann innerhalb der Schleife.",
+        "for $r in //tei:rs where $r/@type = 'work' return string($r)"
+      ],
+      "solution": "for $r in //tei:rs where $r/@type = 'work' return string($r)",
+      "explanation": "where ist das FLWOR-Äquivalent zum Predicate: //tei:rs[@type='work'] und for $r in //tei:rs where $r/@type='work' liefern dasselbe Ergebnis. Bei mehrteiligen Bedingungen (and/or) wird where deutlich lesbarer als ein langer Predicate.",
+      "conceptTag": "for/let/where"
     },
     {
       "id": "w2c06",
@@ -780,6 +872,77 @@ window.CHALLENGES = {
       "solution": "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>",
       "explanation": "xsl:element ist nötig, wenn der Elementname dynamisch ist (z. B. aus einem Attribut käme: name=\"{@type}\"). Bei festem Namen genügt normales Literal-Markup.",
       "conceptTag": "element"
+    },
+    {
+      "id": "w3c13",
+      "world": 3,
+      "worldName": "XSLT Basics",
+      "title": "XQuery übergibt einen Parameter",
+      "task": "Im WeGA-Muster berechnet ein XQuery-Modul Werte vorab und reicht sie als Parameter ans XSLT. Der Starter enthält bereits <xsl:param name=\"docId\"/> — schreibe das Template, das $docId in einem <p> ausgibt.",
+      "type": "xslt",
+      "fixture": "letter_001",
+      "xqueryContext": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nlet $doc    := doc('/db/apps/WeGA-data/letters/A040010.xml')\nlet $xsl    := doc('/db/apps/WeGA-WebApp/xsl/letter.xsl')\nlet $docId  := 'A040010'\nreturn transform:transform($doc, $xsl,\n  <parameters>\n    <param name=\"docId\" value=\"{$docId}\"/>\n  </parameters>)",
+      "xsltParams": {
+        "docId": "A040010"
+      },
+      "expectedType": "html",
+      "expected": "<p>A040010</p>",
+      "hints": [
+        "$docId ist bereits per xsl:param empfangen — im Template einfach $docId verwenden.",
+        "xsl:value-of select=\"$docId\" gibt den Wert aus.",
+        "<p><xsl:value-of select=\"$docId\"/></p>"
+      ],
+      "solution": "<p><xsl:value-of select=\"$docId\"/></p>",
+      "explanation": "In WeGA ruft ein XQuery-Modul transform:transform() auf und übergibt vorberechnete Werte als <parameters>. Das XSLT deklariert sie mit xsl:param am Stylesheet-Anfang (der Starter zeigt das). Die Trennung von Datenlogik (XQuery) und Darstellung (XSLT) ist das WeGA-Kernprinzip.",
+      "conceptTag": "xsl:param"
+    },
+    {
+      "id": "w3c14",
+      "world": 3,
+      "worldName": "XSLT Basics",
+      "title": "Absender als XQuery-Parameter",
+      "task": "XQuery hat den Absendernamen vorab aus dem Dokument extrahiert und als $sender übergeben. Erzeuge einen Briefkopf: <header><h1>Brief von SENDER</h1></header>.",
+      "type": "xslt",
+      "fixture": "letter_001",
+      "xqueryContext": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nlet $doc    := doc('/db/apps/WeGA-data/letters/A040010.xml')\nlet $xsl    := doc('/db/apps/WeGA-WebApp/xsl/letter.xsl')\nlet $sender := string($doc//tei:correspAction[@type='sent']//tei:persName[1])\nreturn transform:transform($doc, $xsl,\n  <parameters>\n    <param name=\"sender\" value=\"{$sender}\"/>\n  </parameters>)",
+      "xsltParams": {
+        "sender": "Carl Maria von Weber"
+      },
+      "expectedType": "html",
+      "expected": "<header><h1>Brief von Carl Maria von Weber</h1></header>",
+      "hints": [
+        "$sender enthält bereits den vom XQuery berechneten Absendernamen.",
+        "Baue statisches HTML um xsl:value-of select=\"$sender\" herum.",
+        "<header><h1>Brief von <xsl:value-of select=\"$sender\"/></h1></header>"
+      ],
+      "solution": "<header><h1>Brief von <xsl:value-of select=\"$sender\"/></h1></header>",
+      "explanation": "Hier sieht man die Arbeitsteilung: XQuery macht den XPath-Aufruf (string($doc//tei:...)) und speichert das Ergebnis in $sender. XSLT bekommt einen fertigen String und rendert nur noch HTML — kein XPath-Wissen auf XSLT-Seite nötig.",
+      "conceptTag": "xsl:param"
+    },
+    {
+      "id": "w3c15",
+      "world": 3,
+      "worldName": "XSLT Basics",
+      "title": "Mehrere Parameter — WeGA-Muster",
+      "task": "XQuery hat Absender, Empfänger und Datum vorab extrahiert ($sender, $recipient, $docDate). Erzeuge einen strukturierten Briefkopf als <header> mit drei <p>-Elementen.",
+      "type": "xslt",
+      "fixture": "letter_001",
+      "xqueryContext": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nlet $doc       := doc('/db/apps/WeGA-data/letters/A040010.xml')\nlet $xsl       := doc('/db/apps/WeGA-WebApp/xsl/letter.xsl')\nlet $sender    := string($doc//tei:correspAction[@type='sent']//tei:persName[1])\nlet $recipient := string($doc//tei:correspAction[@type='received']//tei:persName[1])\nlet $docDate   := string($doc//tei:correspAction[@type='sent']/tei:date/@when)\nreturn transform:transform($doc, $xsl,\n  <parameters>\n    <param name=\"sender\"    value=\"{$sender}\"/>\n    <param name=\"recipient\" value=\"{$recipient}\"/>\n    <param name=\"docDate\"   value=\"{$docDate}\"/>\n  </parameters>)",
+      "xsltParams": {
+        "sender": "Carl Maria von Weber",
+        "recipient": "Caroline Brandt",
+        "docDate": "1817-02-12"
+      },
+      "expectedType": "html",
+      "expected": "<header><p>Von: Carl Maria von Weber</p><p>An: Caroline Brandt</p><p>Datum: 1817-02-12</p></header>",
+      "hints": [
+        "Drei xsl:value-of-Aufrufe, jeder für einen der drei Parameter.",
+        "Baue sie in drei <p>-Elemente innerhalb von <header>.",
+        "<header><p>Von: <xsl:value-of select=\"$sender\"/></p><p>An: <xsl:value-of select=\"$recipient\"/></p><p>Datum: <xsl:value-of select=\"$docDate\"/></p></header>"
+      ],
+      "solution": "<header><p>Von: <xsl:value-of select=\"$sender\"/></p><p>An: <xsl:value-of select=\"$recipient\"/></p><p>Datum: <xsl:value-of select=\"$docDate\"/></p></header>",
+      "explanation": "So funktioniert das WeGA-Muster in der Praxis: XQuery extrahiert alle nötigen Werte aus dem TEI-Dokument (Absender, Empfänger, Datum), übergibt sie als Parameter. Das XSLT-Template ist dadurch einfach und wartbar — es mischt nur noch Werte in HTML-Struktur.",
+      "conceptTag": "xsl:param"
     }
   ],
   "world4": [
@@ -1977,6 +2140,27 @@ window.CONCEPTS = {
       "",
       "xsl:element ist nötig wenn der Name per @-Attribut",
       "oder Variable erst zur Laufzeit bekannt ist."
+    ]
+  },
+  "3:xsl:param": {
+    "title": "WeGA-Muster: XQuery → XSLT",
+    "icon": "🔗",
+    "lines": [
+      "WeGA trennt Daten und Darstellung in zwei Schichten:",
+      "",
+      "  XQuery-Schicht — holt Daten aus eXist-db, berechnet vor:",
+      "    let $sender := string($doc//tei:persName[1])",
+      "    return transform:transform($doc, $xsl,",
+      "      <parameters>",
+      "        <param name=\"sender\" value=\"{$sender}\"/>",
+      "      </parameters>)",
+      "",
+      "  XSLT-Schicht — empfängt mit xsl:param, rendert HTML:",
+      "    <xsl:param name=\"sender\"/>",
+      "    <h1><xsl:value-of select=\"$sender\"/></h1>",
+      "",
+      "xsl:param steht am Anfang des Stylesheets (vor den Templates).",
+      "XSLT bleibt so einfach: nur noch Werte in HTML einbauen."
     ]
   },
   "4:apply-templates": {

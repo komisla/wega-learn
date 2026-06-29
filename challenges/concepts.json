@@ -354,6 +354,27 @@
       "oder Variable erst zur Laufzeit bekannt ist."
     ]
   },
+  "3:xsl:param": {
+    "title": "WeGA-Muster: XQuery → XSLT",
+    "icon": "🔗",
+    "lines": [
+      "WeGA trennt Daten und Darstellung in zwei Schichten:",
+      "",
+      "  XQuery-Schicht — holt Daten aus eXist-db, berechnet vor:",
+      "    let $sender := string($doc//tei:persName[1])",
+      "    return transform:transform($doc, $xsl,",
+      "      <parameters>",
+      "        <param name=\"sender\" value=\"{$sender}\"/>",
+      "      </parameters>)",
+      "",
+      "  XSLT-Schicht — empfängt mit xsl:param, rendert HTML:",
+      "    <xsl:param name=\"sender\"/>",
+      "    <h1><xsl:value-of select=\"$sender\"/></h1>",
+      "",
+      "xsl:param steht am Anfang des Stylesheets (vor den Templates).",
+      "XSLT bleibt so einfach: nur noch Werte in HTML einbauen."
+    ]
+  },
   "4:apply-templates": {
     "title": "apply-templates (push-style)",
     "icon": "🚀",

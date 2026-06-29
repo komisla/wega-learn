@@ -63,6 +63,27 @@ const XQUERY_STARTER =
 (: Dein Code hier :)
 `;
 
+function getXsltStarter(ch) {
+  if (!ch || !ch.xsltParams) return XSLT_STARTER;
+  const paramDecls = Object.keys(ch.xsltParams)
+    .map(k => `  <xsl:param name="${k}"/>`)
+    .join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:tei="http://www.tei-c.org/ns/1.0">
+
+  <xsl:output method="html"/>
+
+${paramDecls}
+
+  <xsl:template match="/">
+    <!-- Dein Code hier -->
+  </xsl:template>
+
+</xsl:stylesheet>`;
+}
+
 const nsResolverFn = p => ({
   'tei': 'http://www.tei-c.org/ns/1.0',
   'xml': 'http://www.w3.org/XML/1998/namespace'
@@ -126,6 +147,7 @@ const els = {
   challengeScreen: $('challengeScreen'),
   cWorldName: $('cWorldName'), cProgress: $('cProgress'),
   cTitleText: $('cTitleText'), cTask: $('cTask'), cConcept: $('cConcept'),
+  xqueryContextPanel: $('xqueryContextPanel'), xqueryContextCode: $('xqueryContextCode'),
   cFixtureName: $('cFixtureName'), xmlView: $('xmlView'),
   editor: $('editor'), editorLabel: $('editorLabel'),
   outputView: $('outputView'), expectedView: $('expectedView'),
@@ -514,6 +536,13 @@ function _doOpenChallenge(world, index) {
   els.cTask.classList.toggle('code-task', ch.type === 'explain' || ch.type === 'write-only');
   els.cConcept.textContent = ch.conceptTag || '';
 
+  if (ch.xqueryContext) {
+    els.xqueryContextCode.textContent = ch.xqueryContext;
+    els.xqueryContextPanel.hidden = false;
+  } else {
+    els.xqueryContextPanel.hidden = true;
+  }
+
   const fixtureName = ch.fixture || '';
   els.cFixtureName.textContent = fixtureName;
 
@@ -567,7 +596,7 @@ function setupChallengeUI(ch) {
       ch.type === 'flwor'  ? 'Dein FLWOR/XQuery-Ausdruck' :
       isXslt2              ? 'Dein XSLT-2.0-Stylesheet (Saxon)' :
                              'Dein XSLT-Stylesheet';
-    els.editor.value = isXslt2 ? XSLT2_STARTER : (isXslt ? XSLT_STARTER : '');
+    els.editor.value = isXslt2 ? XSLT2_STARTER : (isXslt ? getXsltStarter(ch) : '');
     els.editor.hidden = false;
     els.editorLabel.hidden = false;
     els.runBtn.hidden = false;
@@ -852,6 +881,12 @@ function runXSLT(ch) {
   const proc = new XSLTProcessor();
   try { proc.importStylesheet(xsltDoc); }
   catch (err) { return { error: 'Stylesheet konnte nicht geladen werden: ' + (err.message || err) }; }
+
+  if (ch.xsltParams) {
+    for (const [name, value] of Object.entries(ch.xsltParams)) {
+      proc.setParameter(null, name, value);
+    }
+  }
 
   let frag;
   try { frag = proc.transformToFragment(xmlDoc, document); }

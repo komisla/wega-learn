@@ -226,5 +226,68 @@
     "solution": "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>",
     "explanation": "xsl:element ist nötig, wenn der Elementname dynamisch ist (z. B. aus einem Attribut käme: name=\"{@type}\"). Bei festem Namen genügt normales Literal-Markup.",
     "conceptTag": "element"
+  },
+  {
+    "id": "w3c13",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "XQuery übergibt einen Parameter",
+    "task": "Im WeGA-Muster berechnet ein XQuery-Modul Werte vorab und reicht sie als Parameter ans XSLT. Der Starter enthält bereits <xsl:param name=\"docId\"/> — schreibe das Template, das $docId in einem <p> ausgibt.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "xqueryContext": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nlet $doc    := doc('/db/apps/WeGA-data/letters/A040010.xml')\nlet $xsl    := doc('/db/apps/WeGA-WebApp/xsl/letter.xsl')\nlet $docId  := 'A040010'\nreturn transform:transform($doc, $xsl,\n  <parameters>\n    <param name=\"docId\" value=\"{$docId}\"/>\n  </parameters>)",
+    "xsltParams": {"docId": "A040010"},
+    "expectedType": "html",
+    "expected": "<p>A040010</p>",
+    "hints": [
+      "$docId ist bereits per xsl:param empfangen — im Template einfach $docId verwenden.",
+      "xsl:value-of select=\"$docId\" gibt den Wert aus.",
+      "<p><xsl:value-of select=\"$docId\"/></p>"
+    ],
+    "solution": "<p><xsl:value-of select=\"$docId\"/></p>",
+    "explanation": "In WeGA ruft ein XQuery-Modul transform:transform() auf und übergibt vorberechnete Werte als <parameters>. Das XSLT deklariert sie mit xsl:param am Stylesheet-Anfang (der Starter zeigt das). Die Trennung von Datenlogik (XQuery) und Darstellung (XSLT) ist das WeGA-Kernprinzip.",
+    "conceptTag": "xsl:param"
+  },
+  {
+    "id": "w3c14",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Absender als XQuery-Parameter",
+    "task": "XQuery hat den Absendernamen vorab aus dem Dokument extrahiert und als $sender übergeben. Erzeuge einen Briefkopf: <header><h1>Brief von SENDER</h1></header>.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "xqueryContext": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nlet $doc    := doc('/db/apps/WeGA-data/letters/A040010.xml')\nlet $xsl    := doc('/db/apps/WeGA-WebApp/xsl/letter.xsl')\nlet $sender := string($doc//tei:correspAction[@type='sent']//tei:persName[1])\nreturn transform:transform($doc, $xsl,\n  <parameters>\n    <param name=\"sender\" value=\"{$sender}\"/>\n  </parameters>)",
+    "xsltParams": {"sender": "Carl Maria von Weber"},
+    "expectedType": "html",
+    "expected": "<header><h1>Brief von Carl Maria von Weber</h1></header>",
+    "hints": [
+      "$sender enthält bereits den vom XQuery berechneten Absendernamen.",
+      "Baue statisches HTML um xsl:value-of select=\"$sender\" herum.",
+      "<header><h1>Brief von <xsl:value-of select=\"$sender\"/></h1></header>"
+    ],
+    "solution": "<header><h1>Brief von <xsl:value-of select=\"$sender\"/></h1></header>",
+    "explanation": "Hier sieht man die Arbeitsteilung: XQuery macht den XPath-Aufruf (string($doc//tei:...)) und speichert das Ergebnis in $sender. XSLT bekommt einen fertigen String und rendert nur noch HTML — kein XPath-Wissen auf XSLT-Seite nötig.",
+    "conceptTag": "xsl:param"
+  },
+  {
+    "id": "w3c15",
+    "world": 3,
+    "worldName": "XSLT Basics",
+    "title": "Mehrere Parameter — WeGA-Muster",
+    "task": "XQuery hat Absender, Empfänger und Datum vorab extrahiert ($sender, $recipient, $docDate). Erzeuge einen strukturierten Briefkopf als <header> mit drei <p>-Elementen.",
+    "type": "xslt",
+    "fixture": "letter_001",
+    "xqueryContext": "declare namespace tei=\"http://www.tei-c.org/ns/1.0\";\n\nlet $doc       := doc('/db/apps/WeGA-data/letters/A040010.xml')\nlet $xsl       := doc('/db/apps/WeGA-WebApp/xsl/letter.xsl')\nlet $sender    := string($doc//tei:correspAction[@type='sent']//tei:persName[1])\nlet $recipient := string($doc//tei:correspAction[@type='received']//tei:persName[1])\nlet $docDate   := string($doc//tei:correspAction[@type='sent']/tei:date/@when)\nreturn transform:transform($doc, $xsl,\n  <parameters>\n    <param name=\"sender\"    value=\"{$sender}\"/>\n    <param name=\"recipient\" value=\"{$recipient}\"/>\n    <param name=\"docDate\"   value=\"{$docDate}\"/>\n  </parameters>)",
+    "xsltParams": {"sender": "Carl Maria von Weber", "recipient": "Caroline Brandt", "docDate": "1817-02-12"},
+    "expectedType": "html",
+    "expected": "<header><p>Von: Carl Maria von Weber</p><p>An: Caroline Brandt</p><p>Datum: 1817-02-12</p></header>",
+    "hints": [
+      "Drei xsl:value-of-Aufrufe, jeder für einen der drei Parameter.",
+      "Baue sie in drei <p>-Elemente innerhalb von <header>.",
+      "<header><p>Von: <xsl:value-of select=\"$sender\"/></p><p>An: <xsl:value-of select=\"$recipient\"/></p><p>Datum: <xsl:value-of select=\"$docDate\"/></p></header>"
+    ],
+    "solution": "<header><p>Von: <xsl:value-of select=\"$sender\"/></p><p>An: <xsl:value-of select=\"$recipient\"/></p><p>Datum: <xsl:value-of select=\"$docDate\"/></p></header>",
+    "explanation": "So funktioniert das WeGA-Muster in der Praxis: XQuery extrahiert alle nötigen Werte aus dem TEI-Dokument (Absender, Empfänger, Datum), übergibt sie als Parameter. Das XSLT-Template ist dadurch einfach und wartbar — es mischt nur noch Werte in HTML-Struktur.",
+    "conceptTag": "xsl:param"
   }
 ]
