@@ -479,50 +479,24 @@ window.CHALLENGES = {
       "id": "w2c06",
       "world": 2,
       "worldName": "FLWOR Forge",
-      "title": "for + let + where kombiniert",
-      "task": "Zähle für jeden Absatz (tei:p im body) die Wörter und gib 'id: anzahl' nur für Absätze mit mehr als 10 Wörtern zurück.",
+      "title": "for + let + where — Personen mit Vor- und Nachname",
+      "task": "Iteriere über alle tei:persName mit @key. Binde mit let den Textwert an $name. Filtere mit where nur Personen, deren Name ein Leerzeichen enthält. Gib 'Name [key]' zurück.",
       "type": "flwor",
       "fixture": "letter_001",
       "expectedType": "stringArray",
       "expected": [
-        "p1: 26",
-        "p2: 20",
-        "p3: 19",
-        "p4: 14"
+        "Carl Maria von Weber [A002068]",
+        "Caroline Brandt [A002078]",
+        "Friedrich Kind [A002099]"
       ],
       "hints": [
-        "tokenize(string, ' ') zerlegt einen String an Leerzeichen in eine Sequenz.",
-        "Kombiniere for $p ... let $wc := ... where $wc > 10.",
-        "for $p in //tei:body//tei:p let $wc := count(tokenize(normalize-space($p), ' ')) where $wc > 10 return concat($p/@xml:id, ': ', $wc)"
+        "let $name := string($p) spart die doppelte string()-Umwandlung in where und return.",
+        "contains($name, ' ') prüft ob ein Leerzeichen vorkommt.",
+        "for $p in //tei:persName[@key] let $name := string($p) where contains($name, ' ') return concat($name, ' [', $p/@key, ']')"
       ],
-      "solution": "for $p in //tei:body//tei:p let $wc := count(tokenize(normalize-space($p), ' ')) where $wc > 10 return concat($p/@xml:id, ': ', $wc)",
-      "explanation": "Hier greifen alle FLWOR-Klauseln ineinander: for iteriert, let berechnet pro Iteration die Wortzahl, where filtert, return formatiert. tokenize + count ist das Standardmuster zum Wörterzählen.",
+      "solution": "for $p in //tei:persName[@key] let $name := string($p) where contains($name, ' ') return concat($name, ' [', $p/@key, ']')",
+      "explanation": "Das ist der Wert von let: $name wird einmal berechnet und dann in where und return wiederverwendet — kein doppeltes string($p). contains() ist eine Standard-XPath-Funktion, in WeGA häufig zum Inhalts-Prüfen eingesetzt.",
       "conceptTag": "for/let/where"
-    },
-    {
-      "id": "w2c07",
-      "world": 2,
-      "worldName": "FLWOR Forge",
-      "title": "Verschachteltes for",
-      "task": "Gib für jeden Brief in der Sammlung ein Paar 'Absender -> Empfänger' zurück (letters_collection).",
-      "type": "flwor",
-      "fixture": "letters_collection",
-      "expectedType": "stringArray",
-      "expected": [
-        "Carl Maria von Weber -> Caroline Brandt",
-        "Caroline Brandt -> Carl Maria von Weber",
-        "Friedrich Kind -> Carl Maria von Weber",
-        "Carl Maria von Weber -> Karl von Brühl",
-        "Caroline Brandt -> Friedrich Kind"
-      ],
-      "hints": [
-        "Du kannst mehrere for-Klauseln verschachteln oder innerhalb des return weiter navigieren.",
-        "Hole Absender und Empfänger aus correspAction[@type='sent'] bzw. 'received'.",
-        "for $l in //tei:letter for $s in $l/tei:correspAction[@type='sent']/tei:persName return concat(string($s), ' -> ', string($l/tei:correspAction[@type='received']/tei:persName))"
-      ],
-      "solution": "for $l in //tei:letter for $s in $l/tei:correspAction[@type='sent']/tei:persName return concat(string($s), ' -> ', string($l/tei:correspAction[@type='received']/tei:persName))",
-      "explanation": "Mehrere for-Klauseln erzeugen ein kartesisches Produkt — hier aber kontrolliert, weil das innere for auf $l relativ navigiert. So verknüpft man Daten innerhalb eines Dokuments.",
-      "conceptTag": "verschachteltes for"
     },
     {
       "id": "w2c08",
@@ -853,25 +827,6 @@ window.CHALLENGES = {
       "solution": "<xsl:variable name=\"sender\" select=\"//tei:correspAction[@type='sent']//tei:persName\"/><p>Absender: <xsl:value-of select=\"$sender\"/></p>",
       "explanation": "xsl:variable verbessert Lesbarkeit und vermeidet Wiederholung langer XPath-Pfade. Achtung: XSLT-Variablen sind unveränderlich (kein Neuzuweisen).",
       "conceptTag": "variable"
-    },
-    {
-      "id": "w3c12",
-      "world": 3,
-      "worldName": "XSLT Basics",
-      "title": "xsl:element dynamisch",
-      "task": "Erzeuge mit xsl:element ein <section>-Element, das den Absendernamen enthält.",
-      "type": "xslt",
-      "fixture": "letter_001",
-      "expectedType": "html",
-      "expected": "<section>Carl Maria von Weber</section>",
-      "hints": [
-        "xsl:element name=\"...\" erzeugt ein Element, dessen Name zur Laufzeit bestimmt werden kann.",
-        "Der Inhalt steht zwischen <xsl:element> und </xsl:element>.",
-        "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>"
-      ],
-      "solution": "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>",
-      "explanation": "xsl:element ist nötig, wenn der Elementname dynamisch ist (z. B. aus einem Attribut käme: name=\"{@type}\"). Bei festem Namen genügt normales Literal-Markup.",
-      "conceptTag": "element"
     },
     {
       "id": "w3c13",

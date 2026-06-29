@@ -136,6 +136,12 @@ kbd {
 .task-card h2 { margin: 0 0 6px; font-size: 18px; }
 .task-card .pin { margin-right: 4px; }
 .task-card p { margin: 0; color: var(--text); line-height: 1.5; }
+.world-reset-btn {
+  font-size: 12px; padding: 4px 10px; color: var(--text-dim);
+  border-color: var(--border); margin-top: 6px;
+}
+.world-reset-btn:hover { color: var(--error); border-color: var(--error); }
+
 .xquery-context-panel {
   background: #0f1e10; border: 1px solid #2a4a2e; border-radius: 10px;
   margin-bottom: 14px; overflow: hidden;

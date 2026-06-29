@@ -314,6 +314,20 @@ function renderWorldSelect() {
       btn.textContent = done > 0 && done < total ? 'Fortsetzen' : (finished ? 'Wiederholen' : 'Starten');
       btn.addEventListener('click', () => startWorld(w));
       actions.appendChild(btn);
+
+      if (done > 0) {
+        const rstBtn = document.createElement('button');
+        rstBtn.className = 'ghost-btn world-reset-btn';
+        rstBtn.textContent = '↺ Zurücksetzen';
+        rstBtn.title = 'Fortschritt dieser Welt zurücksetzen';
+        rstBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm('Welt ' + w + ' zurücksetzen? Dein Fortschritt in den anderen Welten bleibt erhalten.')) {
+            resetWorld(w);
+          }
+        });
+        actions.appendChild(rstBtn);
+      }
     } else {
       const skip = document.createElement('button');
       skip.className = 'skip-link';
@@ -333,6 +347,17 @@ function unlockWorld(world) {
     state.unlockedWorlds.push(world);
     saveState();
   }
+  renderWorldSelect();
+}
+
+function resetWorld(world) {
+  const challenges = worldChallenges(world);
+  challenges.forEach(ch => {
+    state.completed = state.completed.filter(id => id !== ch.id);
+    delete state.challengeStats[ch.id];
+  });
+  state.seenConcepts = state.seenConcepts.filter(k => !k.startsWith(world + ':'));
+  saveState();
   renderWorldSelect();
 }
 

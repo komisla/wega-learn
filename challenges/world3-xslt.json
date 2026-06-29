@@ -209,25 +209,6 @@
     "conceptTag": "variable"
   },
   {
-    "id": "w3c12",
-    "world": 3,
-    "worldName": "XSLT Basics",
-    "title": "xsl:element dynamisch",
-    "task": "Erzeuge mit xsl:element ein <section>-Element, das den Absendernamen enthält.",
-    "type": "xslt",
-    "fixture": "letter_001",
-    "expectedType": "html",
-    "expected": "<section>Carl Maria von Weber</section>",
-    "hints": [
-      "xsl:element name=\"...\" erzeugt ein Element, dessen Name zur Laufzeit bestimmt werden kann.",
-      "Der Inhalt steht zwischen <xsl:element> und </xsl:element>.",
-      "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>"
-    ],
-    "solution": "<xsl:element name=\"section\"><xsl:value-of select=\"//tei:correspAction[@type='sent']//tei:persName\"/></xsl:element>",
-    "explanation": "xsl:element ist nötig, wenn der Elementname dynamisch ist (z. B. aus einem Attribut käme: name=\"{@type}\"). Bei festem Namen genügt normales Literal-Markup.",
-    "conceptTag": "element"
-  },
-  {
     "id": "w3c13",
     "world": 3,
     "worldName": "XSLT Basics",
